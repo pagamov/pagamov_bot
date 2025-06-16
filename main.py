@@ -1,7 +1,7 @@
 import sqlite3
-from telegram import KeyboardButton, ReplyKeyboardMarkup, Update
+from telegram import KeyboardButton, ReplyKeyboardMarkup, Update, InlineKeyboardButton
 from telegram.ext import Updater, CommandHandler, MessageHandler, filters, CallbackContext
-from telegram.ext import ContextTypes, Application, CommandHandler, MessageHandler, filters, ConversationHandler
+from telegram.ext import CallbackQueryHandler, ContextTypes, Application, CommandHandler, MessageHandler, filters, ConversationHandler
 from queue import Queue
 import httpx
 import asyncio
@@ -9,30 +9,76 @@ import asyncio
 import os
 from dotenv import load_dotenv
 
-# 
-# CONST SECTION
+
+# %% CONST SECTION
 # 
 
-class SQLITE:
+class KEYBOARDS:
+    """
+    Тут находятся все возможные ReplyKeyboardMarkup с InlineKeyboardButton и callback_data
+    """
     def __init__(self):
+        self.SAMPLE = ReplyKeyboardMarkup([
+            [InlineKeyboardButton(text="", callback_data=""), InlineKeyboardButton(text="", callback_data="")],
+            [InlineKeyboardButton(text="", callback_data=""), InlineKeyboardButton(text="", callback_data="")],
+            [InlineKeyboardButton(text="", callback_data=""), InlineKeyboardButton(text="", callback_data="")],
+            [InlineKeyboardButton(text="", callback_data="")]
+        ])
+
+        self.MAIN = ReplyKeyboardMarkup([
+            [InlineKeyboardButton(text="Привычки", callback_data=""), InlineKeyboardButton(text="Напоминания", callback_data="")],
+            [InlineKeyboardButton(text="Заметки", callback_data=""), InlineKeyboardButton(text="", callback_data="")],
+            [InlineKeyboardButton(text="", callback_data=""), InlineKeyboardButton(text="", callback_data="")],
+            [InlineKeyboardButton(text="", callback_data="")]
+        ])
+
+        self.HABIT = ReplyKeyboardMarkup([
+            [InlineKeyboardButton(text="Создать", callback_data=""), InlineKeyboardButton(text="Показать все", callback_data="")],
+            [InlineKeyboardButton(text="Статистика", callback_data=""), InlineKeyboardButton(text="", callback_data="")],
+            [InlineKeyboardButton(text="", callback_data=""), InlineKeyboardButton(text="", callback_data="")],
+            [InlineKeyboardButton(text="Назад", callback_data="")]
+        ])
+
+class SQLITE:
+    """
+    Класс базы данных. Начальная инициация базы данных. Заполнение структуры базы данных.
+    """
+    def __init__(self):
+        """
+        Создание пути и кода инициации таблиц
+        """
         self.location : str = './db.sqlite3'
         self.name : str = 'db'
 
         # list of tables in db
-        self.tables : list[str] = ["USERS"]
+        self.tables : list[str] = ["USER", "HABIT"]
         
         # const on init text to allocate tables
         self.onInit : dict[str,str] = {
-            "USERS" : f"""
+            f"{self.tables[0]}" : f"""
                         CREATE TABLE IF NOT EXISTS {self.tables[0]} (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            username TEXT NOT NULL UNIQUE
-                        );"""
+                            username TEXT NOT NULL UNIQUE,
+                            chat TEXT NOT NULL UNIQUE,
+                            active INTEGER,
+                            role TEXT NOT NULL
+                        );
+                        """,
+            f"{self.tables[1]}" : f"""
+                        CREATE TABLE IF NOT EXISTS {self.tables[1]} (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            name TEXT NOT NULL,
+                            FOREIGN KEY user_id REFERENCES {self.tables[0]} (id),
+                            active INTEGER,
+                            time TEXT,
+                            date TEXT
+                        );
+                        """,
         }
     
-    def init(self) -> None:
+    def createTables(self) -> None:
         """
-        init db in self.location and init tables with self.onInit
+        Инициация базы данных по пути self.location и создание таблиц используя код в self.onInit
         """
         conn : sqlite3.Connection = sqlite3.connect(self.location)
         cur : sqlite3.Cursor = conn.cursor()
@@ -48,6 +94,10 @@ class SQLITE:
 
 class WhiteList:
     def __init__(self) -> None:
+        """
+        Если self.use равно True - данный механизм используется для работы приложения
+        """
+        self.use : bool = True
         self.allowed : list[str] = ["pagamov"]
 
 class UserRoles:
@@ -59,8 +109,7 @@ class UserPermission:
     def __init__(self) -> None:
         pass
 
-# 
-# CLASS SECTION
+# %% CLASS SECTION
 # 
 
 class User:
@@ -78,25 +127,46 @@ class Database:
         pass
 
 
-
-
-# async def test_connection():
-#     try:
-#         with httpx.AsyncClient() as client:
-#             response = await client.get(f'https://api.telegram.org/bot{os.getenv("TOKEN")}/getMe')
-#             print(response.json())
-#     except httpx.ConnectError as e:
-#         print(f"Connection error: {e}")
-
+# %% CommandHandler SECTION
+# 
 
 async def start(update: Update, context: CallbackContext) -> None:
-
-    if update.effective_user.username == "shaurma_1696":
-        await update.message.reply_text("Спасибо за визит, записал все ваши данные!")
+    """
+    Первичная настройка человека, если он есть в базе, то пишем привет. Если его нет просим данные.
+    """
+    whiteList : WhiteList = WhiteList()
+    if whiteList.use and update.effective_user.username not in whiteList.allowed:
+        await update.message.reply_text("Вас нет в разрешенном списке. Обратитесь к администратору.")
     else:
-        keyboard = ReplyKeyboardMarkup([[KeyboardButton("b1")],[KeyboardButton("b2")]], resize_keyboard=True)
-        await update.message.reply_text('Hello! I am your bot.',  reply_markup=keyboard)
-    
+
+        if update.effective_user.username == "shaurma_1696":
+            await update.message.reply_text("Спасибо за визит, записал все ваши данные!")
+        else:
+            keyboard = ReplyKeyboardMarkup([[KeyboardButton("b1")],[KeyboardButton("b2")]], resize_keyboard=True)
+            await update.message.reply_text('Hello! I am your bot.',  reply_markup=keyboard)
+            update.message.re
+
+
+# %% CallbackQueryHandler SECTION
+# 
+
+async def handle_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+
+
+
+    # Example: Respond based on callback data
+    if query.data == "1":
+        await query.message.reply_text("You clicked Button 1")
+    elif query.data == "2":
+        await query.message.reply_text("You clicked Button 2")
+    else:
+        await query.message.reply_text(f"Unknown callback data: {query.data}")
+
+
+# %% MessageHandler SECTION
+# 
 
 async def messageH(update: Update, context: CallbackContext) -> None:
     
@@ -111,12 +181,15 @@ async def messageH(update: Update, context: CallbackContext) -> None:
 async def echo(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text(update.message.text)
 
+
+# %% add_error_handler SECTION
+# 
+
 async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f'Update: {update} caused error {context.error}')
 
 
-# 
-# MAIN SECTION
+# %% MAIN SECTION
 # 
 
 def main() -> None:
@@ -126,24 +199,25 @@ def main() -> None:
 
     # DB SECTION
     db : SQLITE = SQLITE()
-    db.init()
-
-
-    # await test_connection()
+    db.createTables()
 
     # BOT SECTION
     app = Application.builder().token(os.getenv("TOKEN")).build()
+
     app.add_handler(CommandHandler("start", start))
 
+    
+
+    app.add_handler(CallbackQueryHandler(handle_query))
 
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), messageH))
 
     app.add_error_handler(error)
-    app.run_polling(poll_interval=0.8)
+    app.run_polling(poll_interval=0.5)
+    
 
-# 
-# ENTERY SECTION
-# 
+# %% ENTERY SECTION
+#
 
 if __name__ == '__main__':
     main()
