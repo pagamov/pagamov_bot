@@ -13,6 +13,10 @@ from dotenv import load_dotenv
 # %% CONST SECTION
 # 
 
+class DEBUG:
+    def __init__(self):
+        self.debugMode = True
+
 class KEYBOARDS:
     """
     Тут находятся все возможные ReplyKeyboardMarkup с InlineKeyboardButton и callback_data
@@ -39,7 +43,7 @@ class KEYBOARDS:
             [InlineKeyboardButton(text="Назад", callback_data="")]
         ])
 
-class SQLITE:
+class SQLITE(DEBUG):
     """
     Класс базы данных. Начальная инициация базы данных. Заполнение структуры базы данных.
     """
@@ -47,6 +51,9 @@ class SQLITE:
         """
         Создание пути и кода инициации таблиц
         """
+
+        super().__init__()
+
         self.location : str = './db.sqlite3'
         self.name : str = 'db'
 
@@ -75,11 +82,31 @@ class SQLITE:
                         );
                         """,
         }
-    
+
+    def clearDatabase(self) -> None:
+        """
+        Удаление всех таблиц из базы данных
+        """
+        conn : sqlite3.Connection = sqlite3.connect(self.location)
+        cur : sqlite3.Cursor = conn.cursor()
+
+        for i, table in enumerate(self.tables):
+            try:
+                cur.execute(f"DROP TABLE {self.onInit[table]}")
+            except:
+                continue
+        conn.commit()
+
+        cur.close()
+        conn.close()
+
     def createTables(self) -> None:
         """
         Инициация базы данных по пути self.location и создание таблиц используя код в self.onInit
         """
+        if self.debugMode:
+            self.clearDatabase()
+
         conn : sqlite3.Connection = sqlite3.connect(self.location)
         cur : sqlite3.Cursor = conn.cursor()
 
@@ -119,12 +146,26 @@ class User:
     def __init__(self) -> None:
         pass
 
-class Database:
+class Database(SQLITE):
     """
-    
+    Основные функции для записи и получения данных из базы данных.
     """
-    def __init__(self) -> None:
-        pass
+    def __init__(self):
+        super().__init__()
+
+    def userInDatabase(self, username : str) -> bool:
+        """
+        check if user in database
+        """
+        con : sqlite3.Connection
+        cur : sqlite3.Cursor
+        with sqlite3.connect(self.location) as con:
+            with con.cursor() as cur:
+                cur.execute(f"SELECT * FROM {self.tables[0]} WHERE username = {username}")
+                rows = cur.fetchall()
+                return len(rows) > 0
+        return False
+
 
 
 # %% CommandHandler SECTION
@@ -134,6 +175,7 @@ async def start(update: Update, context: CallbackContext) -> None:
     """
     Первичная настройка человека, если он есть в базе, то пишем привет. Если его нет просим данные.
     """
+    # Проверка на белый список
     whiteList : WhiteList = WhiteList()
     if whiteList.use and update.effective_user.username not in whiteList.allowed:
         await update.message.reply_text("Вас нет в разрешенном списке. Обратитесь к администратору.")
@@ -205,8 +247,6 @@ def main() -> None:
     app = Application.builder().token(os.getenv("TOKEN")).build()
 
     app.add_handler(CommandHandler("start", start))
-
-    
 
     app.add_handler(CallbackQueryHandler(handle_query))
 
