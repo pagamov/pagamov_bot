@@ -6,7 +6,7 @@ import logging
 # logging.basicConfig(level=logging.INFO)
 
 from Const import LOGGER_VERBOSE
-from Database.Database import Database
+from database.Database import Database
 
 class Logger(Database):
     """

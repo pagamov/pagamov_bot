@@ -1,6 +1,6 @@
 import sqlite3
 
-from Database.Database import Database
+from database.Database import Database
 import random
 
 
@@ -32,6 +32,13 @@ class User(Database):
         return f"{random.choice(pril)}_{random.choice(animals)}_{''.join([random.choice(dig) for i in range(5)])}"
 
     def createUser(self, tg_username : str) -> None:
+        """
+        1. Добавляет пользователя в базу
+        
+        2. Ставит ему базовые права пользователя (роль)
+        
+        3. Проверяет есть ли ник в списке админов. Если есть - добавляет ему админские права
+        """
         assert tg_username != '', "tg_username is empty"
         con = sqlite3.connect(self.path)
         cur = con.cursor()
@@ -73,7 +80,9 @@ class User(Database):
 
     def get_id_user(self, tg_username : str) -> int:
         """
-        Вернем id_user из таблицы user по нику из tg. -1 если пользователя нет в базе.
+        Вернем id_user из таблицы user по нику из tg. 
+        
+        -1 если пользователя нет в базе.
         """
         assert tg_username != '', "tg_username is empty"
 
@@ -89,6 +98,9 @@ class User(Database):
         return -1 if len(res) == 0 else res[0][0]
 
     def is_admin(self, tg_username : str) -> bool:
+        """
+        Проверяет, является ли человек админом в системе по нику в тг.
+        """
         assert tg_username != '', "tg_username is empty"
 
         con = sqlite3.connect(self.path)
@@ -119,6 +131,9 @@ class User(Database):
         res = cur.fetchall()
         cur.close()
         con.close()
-        assert res[0][0] != '', "bot_username is empty"
-
-        return res[0][0]
+        
+        bot_username : str = res[0][0]
+        
+        assert bot_username != '', "bot_username is empty"
+        
+        return bot_username

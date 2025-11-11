@@ -3,26 +3,24 @@ from telegram import Update, ReplyKeyboardRemove
 from telegram import KeyboardButton, ReplyKeyboardMarkup
 from telegram.ext import Application, CommandHandler, ContextTypes, ConversationHandler, MessageHandler
 from telegram.ext import filters
+from telegram.ext._handlers.basehandler import BaseHandler
 
 from Const import TOKEN, TELEGRAM_MAX_MESSAGE_SIZE
 
 # TODO сделать изменение внутреннего аноним ника
 
-from Database.Database import Database
-
-from Database.Logger.Logger import Logger
-from Database.User.User import User
+from database.Database import Database
+from database.logger.Logger import Logger
+from database.user.User import User
 
 # Handler section
 
 class Text():
-    MAIN_MENU_KEYBOARD =       ["Напоминания",      "Дела",
-                                "Привычки",         "Готовые программы",
-                                "Обо мне"]
+    MAIN_MENU_KEYBOARD : list[str] =       ["Напоминания",      "Дела",
+                                            "Привычки",         "Готовые программы",
+                                            "Обо мне"]
     
-    MAIN_MENU_ADMIN_KEYBOARD = ["Напоминания",      "Дела",
-                                "Привычки",         "Готовые программы",
-                                "Обо мне",          "Панель Админа"]
+    MAIN_MENU_ADMIN_KEYBOARD : list[str] = MAIN_MENU_KEYBOARD + ["Панель Админа"]
 
 class Keyboard():
     MAIN_MENU = ReplyKeyboardMarkup([
@@ -111,7 +109,7 @@ class State():
 
     ADMIN_PANEL_1, ADMIN_PANEL_2, ADMIN_PANEL_3     = 7, 77, 777
 
-    ADMIN_PANEL_TAIL_LOG_BOT = 700001
+    ADMIN_PANEL_TAIL_LOG_BOT = 700_001
 
     MAIN_MENU_ADMIN = 8
 
@@ -120,8 +118,8 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     Тут мы начинаем работу в режиме диалога.
     Возвращаем меню
     """
-    logger = Logger()
-    user = User()
+    logger : Logger = Logger()
+    user : User = User()
 
     message_type : str = update.message.chat.type
     text : str = update.message.text
@@ -154,7 +152,7 @@ async def FROM_IDLE_MENU(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     пользователь может быть на другой клавиатуре посреди другого этапа.
     Чтобы вернуться к основному меню нажатием на клавишу, добавлен такой entry_points
     """
-    user = User()
+    user : User = User()
     tg_username : str = update.effective_user.username
     if user.is_admin(tg_username):
         await update.message.reply_text('Вернулись после падения сервера (не ваш косяк), о великий равный небу.', reply_markup=Keyboard.MAIN_MENU_ADMIN)
@@ -163,7 +161,7 @@ async def FROM_IDLE_MENU(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         await update.message.reply_text('Вернулись после падения сервера', reply_markup=Keyboard.MAIN_MENU)
         return State.MAIN_MENU
 
-async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def cancel_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await context.bot.send_message(chat_id=update.effective_chat.id, text='Работа бота завершена')
     
 async def MAIN_MENU(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -246,7 +244,7 @@ async def NOTIFY_MENU(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         case "Назад":
             match User().is_admin(tg_username):
                 case True:
-                    await update.message.reply_text('Давай в основное меню', reply_markup=Keyboard.MAIN_MENU_ADMIN)
+                    await update.message.reply_text('Давай в основное меню, великий господин равный небу', reply_markup=Keyboard.MAIN_MENU_ADMIN)
                     return State.MAIN_MENU_ADMIN
                 case _:
                     await update.message.reply_text('Давай в основное меню', reply_markup=Keyboard.MAIN_MENU)
@@ -276,7 +274,7 @@ async def JOB_MENU(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         case "Назад":
             match User().is_admin(tg_username):
                 case True:
-                    await update.message.reply_text('Давай в основное меню', reply_markup=Keyboard.MAIN_MENU_ADMIN)
+                    await update.message.reply_text('Давай в основное меню, великий господин равный небу', reply_markup=Keyboard.MAIN_MENU_ADMIN)
                     return State.MAIN_MENU_ADMIN
                 case _:
                     await update.message.reply_text('Давай в основное меню', reply_markup=Keyboard.MAIN_MENU)
@@ -307,7 +305,7 @@ async def HABBIT_MENU(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         case "Назад":
             match User().is_admin(tg_username):
                 case True:
-                    await update.message.reply_text('Давай в основное меню', reply_markup=Keyboard.MAIN_MENU_ADMIN)
+                    await update.message.reply_text('Давай в основное меню, великий господин равный небу', reply_markup=Keyboard.MAIN_MENU_ADMIN)
                     return State.MAIN_MENU_ADMIN
                 case _:
                     await update.message.reply_text('Давай в основное меню', reply_markup=Keyboard.MAIN_MENU)
@@ -337,7 +335,7 @@ async def PROGRAMM_MENU(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         case "Назад":
             match User().is_admin(tg_username):
                 case True:
-                    await update.message.reply_text('Давай в основное меню', reply_markup=Keyboard.MAIN_MENU_ADMIN)
+                    await update.message.reply_text('Давай в основное меню, великий господин равный небу', reply_markup=Keyboard.MAIN_MENU_ADMIN)
                     return State.MAIN_MENU_ADMIN
                 case _:
                     await update.message.reply_text('Давай в основное меню', reply_markup=Keyboard.MAIN_MENU)
@@ -356,7 +354,7 @@ async def ABOUT_ME_MENU(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         case "Назад":
             match User().is_admin(tg_username):
                 case True:
-                    await update.message.reply_text('Давай в основное меню', reply_markup=Keyboard.MAIN_MENU_ADMIN)
+                    await update.message.reply_text('Давай в основное меню, великий господин равный небу', reply_markup=Keyboard.MAIN_MENU_ADMIN)
                     return State.MAIN_MENU_ADMIN
                 case _:
                     await update.message.reply_text('Давай в основное меню', reply_markup=Keyboard.MAIN_MENU)
@@ -379,7 +377,7 @@ async def ADMIN_PANEL_1(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         case 'Назад':
             match User().is_admin(tg_username):
                 case True:
-                    await update.message.reply_text('Давай в основное меню', reply_markup=Keyboard.MAIN_MENU_ADMIN)
+                    await update.message.reply_text('Давай в основное меню, великий господин равный небу', reply_markup=Keyboard.MAIN_MENU_ADMIN)
                     return State.MAIN_MENU_ADMIN
                 case _:
                     await update.message.reply_text('Давай в основное меню', reply_markup=Keyboard.MAIN_MENU)
@@ -440,7 +438,7 @@ async def ADMIN_PANEL_2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         case 'Назад':
             match User().is_admin(tg_username):
                 case True:
-                    await update.message.reply_text('Давай в основное меню', reply_markup=Keyboard.MAIN_MENU_ADMIN)
+                    await update.message.reply_text('Давай в основное меню, великий господин равный небу', reply_markup=Keyboard.MAIN_MENU_ADMIN)
                     return State.MAIN_MENU_ADMIN
                 case _:
                     await update.message.reply_text('Давай в основное меню', reply_markup=Keyboard.MAIN_MENU)
@@ -458,7 +456,7 @@ async def ADMIN_PANEL_3(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         case 'Назад':
             match User().is_admin(tg_username):
                 case True:
-                    await update.message.reply_text('Давай в основное меню', reply_markup=Keyboard.MAIN_MENU_ADMIN)
+                    await update.message.reply_text('Давай в основное меню, великий господин равный небу', reply_markup=Keyboard.MAIN_MENU_ADMIN)
                     return State.MAIN_MENU_ADMIN
                 case _:
                     await update.message.reply_text('Давай в основное меню', reply_markup=Keyboard.MAIN_MENU)
@@ -485,27 +483,30 @@ def main():
         app = Application.builder().token(TOKEN).build()
     except Exception as e:
         logger.log(e, level='CRITICAL') 
+        
+    entry_points : list = [ CommandHandler('start', start_command), 
+                            MessageHandler(filters.TEXT & (~filters.COMMAND), FROM_IDLE_MENU)]
+    
+    states = {}
+    states[State.MAIN_MENU] = [MessageHandler(filters.TEXT & (~filters.COMMAND), MAIN_MENU)]
+    
+    states[State.MAIN_MENU_ADMIN] =             [MessageHandler(filters.TEXT & (~filters.COMMAND), MAIN_MENU_ADMIN)]
+    states[State.NOTIFY_MENU] =                 [MessageHandler(filters.TEXT & (~filters.COMMAND), NOTIFY_MENU)]
+    states[State.JOB_MENU] =                    [MessageHandler(filters.TEXT & (~filters.COMMAND), JOB_MENU)]
+    states[State.HABBIT_MENU] =                 [MessageHandler(filters.TEXT & (~filters.COMMAND), HABBIT_MENU)]
+    states[State.PROGRAMM_MENU] =               [MessageHandler(filters.TEXT & (~filters.COMMAND), PROGRAMM_MENU)]
+    states[State.ABOUT_ME_MENU] =               [MessageHandler(filters.TEXT & (~filters.COMMAND), ABOUT_ME_MENU)]
+    states[State.ADMIN_PANEL_1] =               [MessageHandler(filters.TEXT & (~filters.COMMAND), ADMIN_PANEL_1)]
+
+    states[State.ADMIN_PANEL_TAIL_LOG_BOT] =    [MessageHandler(filters.TEXT & (~filters.COMMAND), ADMIN_PANEL_TAIL_LOG_BOT)]
+
+    states[State.ADMIN_PANEL_2] =               [MessageHandler(filters.TEXT & (~filters.COMMAND), ADMIN_PANEL_2)]
+    states[State.ADMIN_PANEL_3] =               [MessageHandler(filters.TEXT & (~filters.COMMAND), ADMIN_PANEL_3)]
+    states[ConversationHandler.END] =           [MessageHandler(filters.TEXT & (~filters.COMMAND), handle_final)]
 
     app.add_handler(ConversationHandler(
-        entry_points=[
-                                        CommandHandler('start', start_command), 
-                                        MessageHandler(filters.TEXT & (~filters.COMMAND), FROM_IDLE_MENU)],
-        states= {
-            State.MAIN_MENU :           [MessageHandler(filters.TEXT & (~filters.COMMAND), MAIN_MENU)],
-            State.MAIN_MENU_ADMIN :     [MessageHandler(filters.TEXT & (~filters.COMMAND), MAIN_MENU_ADMIN)],
-            State.NOTIFY_MENU :         [MessageHandler(filters.TEXT & (~filters.COMMAND), NOTIFY_MENU)],
-            State.JOB_MENU :            [MessageHandler(filters.TEXT & (~filters.COMMAND), JOB_MENU)],
-            State.HABBIT_MENU :         [MessageHandler(filters.TEXT & (~filters.COMMAND), HABBIT_MENU)],
-            State.PROGRAMM_MENU :       [MessageHandler(filters.TEXT & (~filters.COMMAND), PROGRAMM_MENU)],
-            State.ABOUT_ME_MENU :       [MessageHandler(filters.TEXT & (~filters.COMMAND), ABOUT_ME_MENU)],
-            State.ADMIN_PANEL_1 :       [MessageHandler(filters.TEXT & (~filters.COMMAND), ADMIN_PANEL_1)],
-
-            State.ADMIN_PANEL_TAIL_LOG_BOT : [MessageHandler(filters.TEXT & (~filters.COMMAND), ADMIN_PANEL_TAIL_LOG_BOT)],
-
-            State.ADMIN_PANEL_2 :       [MessageHandler(filters.TEXT & (~filters.COMMAND), ADMIN_PANEL_2)],
-            State.ADMIN_PANEL_3 :       [MessageHandler(filters.TEXT & (~filters.COMMAND), ADMIN_PANEL_3)],
-            ConversationHandler.END :   [MessageHandler(filters.TEXT & (~filters.COMMAND), handle_final)]
-        },
+        entry_points=entry_points,
+        states=states,
         fallbacks=[MessageHandler('cancel', cancel_command)]
     ))
     app.add_error_handler(error)
