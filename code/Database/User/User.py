@@ -6,8 +6,6 @@ import random
 
 class User(Database):
     """
-    def __createBot_username(self) -> str
-
     def createUser(self, tg_username : str) -> None
 
     def get_id_user(self, tg_username : str) -> int
@@ -43,8 +41,7 @@ class User(Database):
         con = sqlite3.connect(self.path)
         cur = con.cursor()
         cur.execute(f"""
-            INSERT INTO 
-                    user 
+            INSERT INTO user 
                     (tg_username, bot_username)
             VALUES 
                     ("{tg_username}", "{self.__createBot_username()}");
