@@ -53,17 +53,20 @@ class Text():
     
     MAIN_MENU_KEYBOARD : list[str] = ["Напоминания","Дела","Привычки","Готовые программы","Обо мне"]
     
-    MAIN_MENU_t0, MAIN_MENU_ADMIN_t0 = "Система напоминаний"
-    MAIN_MENU_t1, MAIN_MENU_ADMIN_t1 = "Система твоих дел"
-    MAIN_MENU_t2, MAIN_MENU_ADMIN_t2 = "Система привычек"
-    MAIN_MENU_t3, MAIN_MENU_ADMIN_t3 = "Система готовых программ для тебя"
-    MAIN_MENU_t4, MAIN_MENU_ADMIN_t4 = "Что то о тебе"
+    MAIN_MENU_t0 = "Система напоминаний"
+    MAIN_MENU_t1 = "Система твоих дел"
+    MAIN_MENU_t2 = "Система привычек"
+    MAIN_MENU_t3 = "Система готовых программ для тебя"
+    MAIN_MENU_t4 = "Что то о тебе"
     
-    # MAIN_MENU_ADMIN_t0 = MAIN_MENU_t0
-    # MAIN_MENU_ADMIN_t1 = MAIN_MENU_t1
-    # MAIN_MENU_ADMIN_t2 = MAIN_MENU_t2
-    # MAIN_MENU_ADMIN_t3 = MAIN_MENU_t3
-    # MAIN_MENU_ADMIN_t4 = MAIN_MENU_t4
+    
+    
+    
+    MAIN_MENU_ADMIN_t0 = MAIN_MENU_t0
+    MAIN_MENU_ADMIN_t1 = MAIN_MENU_t1
+    MAIN_MENU_ADMIN_t2 = MAIN_MENU_t2
+    MAIN_MENU_ADMIN_t3 = MAIN_MENU_t3
+    MAIN_MENU_ADMIN_t4 = MAIN_MENU_t4
     MAIN_MENU_ADMIN_t5 = "Ну раз ты админ..."
 
     
