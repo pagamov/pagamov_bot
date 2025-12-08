@@ -190,7 +190,7 @@ class Database:
     def __init__(self):
         # Мы ищем файл который исполняется
         # Далее отступаем назад и в папке db делаем файл main.db
-        self.path = os.path.dirname(os.path.abspath(__file__)) + '/../../db/main.db'
+        self.path = os.path.dirname(os.path.abspath(__file__)) + '/../db/main.db'
 
     def firstInitDatabase(self):
         con = sqlite3.connect(self.path)
@@ -836,6 +836,10 @@ async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f'Update:\n\n{update}\n\nCaused error:\n\n{context.error}')
 
 def main():
+    
+    print('os.path.abspath(__file__)', os.path.abspath(__file__))
+    print('os.path.dirname(os.path.abspath(__file__))', os.path.dirname(os.path.abspath(__file__)))
+    
     db = Database()
     db.firstInitDatabase()
     logger = Logger()
