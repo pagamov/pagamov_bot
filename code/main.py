@@ -1,6 +1,9 @@
 
+import html
+import traceback
 from telegram import Update, ReplyKeyboardRemove
 from telegram import KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.constants import ParseMode
 
 from telegram.ext import CommandHandler, ContextTypes, ConversationHandler, MessageHandler
 from telegram.ext import filters, CallbackContext, ApplicationBuilder, CallbackQueryHandler, ChosenInlineResultHandler
@@ -836,14 +839,14 @@ async def ADMIN_PANEL_1(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
             case _:
                 await update.message.reply_text('Давай в основное меню', reply_markup=Keyboard.MAIN_MENU)
                 return State.MAIN_MENU
-        
+
     elif text == Text.ADMIN_PANEL_1_KEYBOARD[-1]: # >
         await update.message.reply_text('Админка 2', reply_markup=Keyboard.ADMIN_PANEL_2)
         return State.ADMIN_PANEL_2
-    
+
     else:
         return State.ADMIN_PANEL_1
-    
+
 async def ADMIN_PANEL_TAIL_LOG_BOT(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     
     """
@@ -888,7 +891,7 @@ async def ADMIN_PANEL_TAIL_LOG_BOT(update: Update, context: ContextTypes.DEFAULT
                 await update.message.reply_text(message, reply_markup=Keyboard.ADMIN_PANEL_1)
 
         return State.ADMIN_PANEL_1
-        
+
 async def ADMIN_PANEL_2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     text : str = update.message.text
     tg_username : str = update.effective_user.username
@@ -909,7 +912,7 @@ async def ADMIN_PANEL_2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                     return State.MAIN_MENU
         case _:
             return State.ADMIN_PANEL_2
-        
+
 async def ADMIN_PANEL_3(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     text : str = update.message.text
     tg_username : str = update.effective_user.username
@@ -927,25 +930,21 @@ async def ADMIN_PANEL_3(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
                     return State.MAIN_MENU
         case _:
             return State.ADMIN_PANEL_3
-        
 
 async def handle_final(update: Update, context: ContextTypes.DEFAULT_TYPE):
     pass
 
-
 async def check_notify_queue(context: ContextTypes.DEFAULT_TYPE):
-    # print("i check notify queue")
-
     db = Database()
 
-    to_send = db.get_from_query(f"""
+    notify_to_send = db.get_from_query(f"""
         SELECT id_notify, chat_id, description
                                 FROM notify
                                 WHERE sent = 0 and DATETIME('now') >= time_notify
     """)
-    # print("size to send", len(to_send))
-    if len(to_send) != 0:
-        for notify in to_send:
+
+    if len(notify_to_send) != 0:
+        for notify in notify_to_send:
             id = notify[0]
             chat_id = notify[1]
             text = notify[2]
@@ -965,6 +964,7 @@ async def notify_queue_handler(update : Update, _):
     await query.answer()
 
     if callback_data['text'] == "notify_set_done":
+        id = callback_data['id']
         Database().run_query(f"""
             UPDATE notify
             SET done = 1
@@ -974,7 +974,7 @@ async def notify_queue_handler(update : Update, _):
     
     elif callback_data['text'] == "notify_delay":
         id = callback_data['id']
-        await query.edit_message_text(text="Отложим на")
+        # await query.edit_message_text(text="Отложим на")
         await query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup([[
             InlineKeyboardButton("1 min", callback_data=json.dumps({"text":"notify_delay_1min", "id":id}))
         ]]))
@@ -991,7 +991,30 @@ async def notify_queue_handler(update : Update, _):
 # Main section
 
 async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print(Text.error_t0.format(update, context.error))
+    # print(Text.error_t0.format(update, context.error))
+    # await context.bot.send_message(chat_id=321911494,
+    #                                text=f"Bot Error:\n<code>{html.escape(str(context.error))}</code>",
+    #                                parse_mode='HTML')
+    
+    # print("Exception while handling an update: ", exc_info=context.error)
+
+    tb_list = traceback.format_exception(None, context.error, context.error.__traceback__)
+    tb_string = "".join(tb_list)
+
+    update_str = update.to_dict() if isinstance(update, Update) else str(update)
+    message = (
+        "An exception was raised while handling an update\n"
+        f"<pre>update = {html.escape(json.dumps(update_str, indent=2, ensure_ascii=False))}"
+        "</pre>\n\n"
+        f"<pre>context.chat_data = {html.escape(str(context.chat_data))}</pre>\n\n"
+        f"<pre>context.user_data = {html.escape(str(context.user_data))}</pre>\n\n"
+        f"<pre>{html.escape(tb_string)}</pre>"
+    )
+
+    # Finally, send the message
+    await context.bot.send_message(
+        chat_id=321911494, text=message, parse_mode=ParseMode.HTML
+    )
 
 def main():
     # print('os.path.abspath(__file__)', os.path.abspath(__file__))
@@ -1002,12 +1025,12 @@ def main():
     logger = Logger()
     
     try:
-        logger.log("Starting bot...")
+        Logger().log("Starting bot...")
         app = (ApplicationBuilder()
                .token(TOKEN)
                .build())
     except Exception as e:
-        logger.log(e, level='CRITICAL') 
+        Logger().log(e, level='CRITICAL') 
         
     entry_points : list = [ CommandHandler('start', start_command), 
                             MessageHandler(filters.TEXT & (~filters.COMMAND), FROM_IDLE_MENU)]
@@ -1033,26 +1056,27 @@ def main():
     states[State.ADMIN_PANEL_3] =               [MessageHandler(filters.TEXT & (~filters.COMMAND), ADMIN_PANEL_3)]
     states[ConversationHandler.END] =           [MessageHandler(filters.TEXT & (~filters.COMMAND), handle_final)]
 
+    # states = dict(map(lambda i, k : k.append(CallbackQueryHandler(notify_queue_handler)), states))
+    for key, _ in states.items():
+        states[key].append(CallbackQueryHandler(notify_queue_handler))
     app.add_handler(ConversationHandler(
         entry_points=entry_points,
         states=states,
-        fallbacks=[MessageHandler('cancel', cancel_command)]
+        fallbacks=[CommandHandler('cancel', cancel_command)]
     ))
-    app.add_error_handler(error)
+
+    # Обработчик для callback_data
+    app.add_handler(CallbackQueryHandler(notify_queue_handler))
 
     # Добавление ассинхронного job который будет отправлять напоминания и сообщения из очереди
     check_notify_queue_job = app.job_queue.run_repeating(check_notify_queue, interval=5, first=1)
 
-
-    # Обработчик для callback_data
-
-    app.add_handler(CallbackQueryHandler(notify_queue_handler))
-
+    app.add_error_handler(error)
     try:
-        logger.log("Polling bot...")
-        app.run_polling(poll_interval=0.8, )
+        Logger().log("Polling bot...")
+        app.run_polling(poll_interval=0.8, allowed_updates=Update.ALL_TYPES)
     except Exception as e:
-        logger.log(e, level='CRITICAL')
+        Logger().log(e, level='CRITICAL')
 
 if __name__ == '__main__':
     main()
