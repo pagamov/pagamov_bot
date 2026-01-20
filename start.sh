@@ -1,2 +1,2 @@
 
-python3.13 code/main.py
+python3.12 code/main.py
