@@ -1,6 +1,3 @@
-
-import html
-import traceback
 from telegram import Update, ReplyKeyboardRemove
 from telegram import KeyboardButton, ReplyKeyboardMarkup, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
@@ -8,518 +5,22 @@ from telegram.constants import ParseMode
 from telegram.ext import CommandHandler, ContextTypes, ConversationHandler, MessageHandler
 from telegram.ext import filters, CallbackContext, ApplicationBuilder, CallbackQueryHandler, ChosenInlineResultHandler
 
-import sqlite3
-import re
-import random
-import logging
-from typing import Final, Sequence
-import os
-from dotenv import load_dotenv
-import time
 import json
 
 import functools
 from typing import Callable
 
+from const import *
+from database import *
+from notify import *
+
 # TODO сделать изменение внутреннего аноним ника
 # TODO после смены ника, нужно в базе поменять ВСЕ логи где он участвует на этот ник
 # TODO удалять через админскую консоль пользователей
 # TODO создавать через консоль юзеров
-# TODO 
-# TODO 
-# TODO 
-# TODO 
-# TODO 
-# TODO 
-# TODO 
-
-"""
-Секция с константами
-"""
-load_dotenv() # Загрузка файла .env
-TOKEN : Final = os.getenv("TOKEN") # Паша если сольешь токен опять - обещаю перестать писать ботов для ВКР
-LOGGER_VERBOSE : Final = True # Означает, будет ли модуль Logger выводить данные не только в БД но еще и в консоль
-TELEGRAM_MAX_MESSAGE_SIZE : Final = 4096 # Столько char может быть максимум в одном текстовом сообщении в телеграме
-
-class Text:
-    """
-    Тут будут лежать все возможные текстовые константы
-    """
-    start_command_t0 = """chat_id ({}), tg_username ({}) in start_command {}: {}"""
-    start_command_t1 = """Добро пожаловать, {}!"""
-    start_command_t2 = """Добро пожаловать в мое приложение, {}!"""
-    start_command_t2 += """\nВам доступны напоминания и трекер привычек."""
-    start_command_t2 += """\nТакже вы можете воспользоваться готовыми программами приобретения привычек или отказа от плохих."""
-    start_command_t2 += """\nЖелаю удачи!"""
-    start_command_t3 = """Добро пожаловать, о великий равный небу {}. Ваши покои вас ждут."""
-    
-    FROM_IDLE_MENU_t0 = "Вернулись после падения сервера (не ваш косяк), о великий равный небу."
-    FROM_IDLE_MENU_t1 = "Вернулись после падения сервера"
-    
-    cancel_command_t0 = "Работа бота завершена"
-    
-    MAIN_MENU_KEYBOARD : list[str] = ["Напоминания","_Дела","Привычки","Готовые программы","Обо мне"]
-    
-    MAIN_MENU_t0 = "Система напоминаний"
-    MAIN_MENU_t1 = "Система твоих дел"
-    MAIN_MENU_t2 = "Система привычек"
-    MAIN_MENU_t3 = "Система готовых программ для тебя"
-    MAIN_MENU_t4 = "Что то о тебе"
-    
-
-    MAIN_MENU_ADMIN_t0 = MAIN_MENU_t0
-    MAIN_MENU_ADMIN_t1 = MAIN_MENU_t1
-    MAIN_MENU_ADMIN_t2 = MAIN_MENU_t2
-    MAIN_MENU_ADMIN_t3 = MAIN_MENU_t3
-    MAIN_MENU_ADMIN_t4 = MAIN_MENU_t4
-    MAIN_MENU_ADMIN_t5 = "Ну раз ты админ..."
-    
-    MAIN_MENU_ADMIN_KEYBOARD : list[str] = MAIN_MENU_KEYBOARD + ["Панель Админа"]
-    
-    NOTIFY_MENU_KEYBOARD : list[str] = ["Мои напоминания","Добавить","Удалить","Изменить","Настройки","Назад"]
-    # JOB_MENU_KEYBOARD : list[str] = ["Мои дела","Добавить","Удалить","Изменить","Настройки","Назад"]
-    HABBIT_MENU_KEYBOARD : list[str] = ["Мои привычки","Добавить","Удалить","Изменить","Настройки","Назад"]
-    PROGRAMM_MENU_KEYBOARD : list[str] = ["Мои готовые программы","Добавить","Удалить","Изменить","Настройки","Назад"]
-    ABOUT_ME_MENU_KEYBOARD : list[str] = ["Изменить мой ник", "Назад"]
-    
-    ADMIN_PANEL_1_KEYBOARD : list[str] = ["Получить логи бота", "Добавить напоминание через 1 минуту"] + ["Назад",">"]
-    ADMIN_PANEL_2_KEYBOARD : list[str] = [] + ["<","Назад",">"]
-    ADMIN_PANEL_3_KEYBOARD : list[str] = [] + ["<","Назад"]
-
-    error_t0 : str = """Update:\n\n{}\n\nCaused error:\n\n{}"""
 
 
-    createBot_username_t0 : list[str] = ["Удачливый","Смелый","Весёлый","Храбрый","Гениальный","Остроумный",
-                                           "Талантливый","Умный","Забавный","Быстрый","Честный","Осторожный",
-                                           "Решительный","Проницательный","Верный","Любимый","Дерзкий",
-                                           "Очаровательный","Щедрый","Находчивый"]
-    createBot_username_t1 : list[str] = ['слон','тигр','медведь','лев','крокодил','голубь','жираф',
-                                           'верблюд','броненосец','кот']
-    
-    createBot_username_t2 : list[str] = ['0','1','2','3','4','5','6','7','8','9']
 
-    createUser_t0 : str = """INSERT INTO user (tg_username, bot_username)
-                                VALUES ("{}", "{}");"""
-    
-
-    createUser_t1 : str = """
-                INSERT INTO user_role
-                    (user, role)
-                VALUES(
-                    (SELECT user.id_user FROM user WHERE user.tg_username = '{}'), 
-                    (SELECT role.id_role FROM role WHERE role.name_role = '{}'))"""
-    
-    createUser_t2 : str = """
-                INSERT INTO user_role
-                    (user, role)
-                VALUES
-                (
-                    (SELECT user.id_user FROM user WHERE user.tg_username = '{}'), 
-                    (SELECT role.id_role FROM role WHERE role.name_role = '{}'))"""
-
-    get_id_user_t0 : str = '''SELECT id_user FROM user
-            WHERE tg_username = "{}"'''
-    
-
-    is_admin_t0 : str = """
-            SELECT 
-                id_user_role 
-            FROM
-                user_role
-            WHERE 
-                user = (SELECT id_user FROM user WHERE tg_username = '{}') AND 
-                role = (SELECT id_role FROM role WHERE name_role = '{}')"""
-    
-    get_bot_username_t0 : str = """
-            SELECT bot_username FROM user
-            WHERE tg_username = "{}"
-        """
-    get_bot_username_err : str = "tg_username is empty"
-
-    tail_log_bot_t0 : str = """
-        WITH tmp AS
-            (SELECT * from bot_log
-            ORDER BY bot_log_id DESC
-            LIMIT {})
-        SELECT 
-            datetime, text 
-        from tmp
-        ORDER BY
-            bot_log_id ASC
-    """
-
-class Keyboard:
-    MAIN_MENU = ReplyKeyboardMarkup([
-                    [KeyboardButton(Text.MAIN_MENU_KEYBOARD[0]),KeyboardButton(Text.MAIN_MENU_KEYBOARD[1])],
-                    [KeyboardButton(Text.MAIN_MENU_KEYBOARD[2]),KeyboardButton(Text.MAIN_MENU_KEYBOARD[3])],
-                    [KeyboardButton(Text.MAIN_MENU_KEYBOARD[4])]
-                ], resize_keyboard=True)
-    
-    MAIN_MENU_ADMIN = ReplyKeyboardMarkup([
-                    [KeyboardButton(Text.MAIN_MENU_ADMIN_KEYBOARD[0]),KeyboardButton(Text.MAIN_MENU_ADMIN_KEYBOARD[1])],
-                    [KeyboardButton(Text.MAIN_MENU_ADMIN_KEYBOARD[2]),KeyboardButton(Text.MAIN_MENU_ADMIN_KEYBOARD[3])],
-                    [KeyboardButton(Text.MAIN_MENU_ADMIN_KEYBOARD[4]),KeyboardButton(Text.MAIN_MENU_ADMIN_KEYBOARD[5])]
-                ], resize_keyboard=True)
-    
-    NOTIFY_MENU = ReplyKeyboardMarkup([
-                    [KeyboardButton(Text.NOTIFY_MENU_KEYBOARD[0]),KeyboardButton(Text.NOTIFY_MENU_KEYBOARD[1])],
-                    [KeyboardButton(Text.NOTIFY_MENU_KEYBOARD[2]),KeyboardButton(Text.NOTIFY_MENU_KEYBOARD[3])],
-                    [KeyboardButton(Text.NOTIFY_MENU_KEYBOARD[4]),KeyboardButton(Text.NOTIFY_MENU_KEYBOARD[5])]
-                ], resize_keyboard=True)
-    
-    # JOB_MENU = ReplyKeyboardMarkup([
-    #                 [KeyboardButton(Text.JOB_MENU_KEYBOARD[0]),KeyboardButton(Text.JOB_MENU_KEYBOARD[1])],
-    #                 [KeyboardButton(Text.JOB_MENU_KEYBOARD[2]),KeyboardButton(Text.JOB_MENU_KEYBOARD[3])],
-    #                 [KeyboardButton(Text.JOB_MENU_KEYBOARD[4]),KeyboardButton(Text.JOB_MENU_KEYBOARD[5])]
-    #             ], resize_keyboard=True)
-    
-    HABBIT_MENU = ReplyKeyboardMarkup([
-                    [KeyboardButton(Text.HABBIT_MENU_KEYBOARD[0]),KeyboardButton(Text.HABBIT_MENU_KEYBOARD[1])],
-                    [KeyboardButton(Text.HABBIT_MENU_KEYBOARD[2]),KeyboardButton(Text.HABBIT_MENU_KEYBOARD[3])],
-                    [KeyboardButton(Text.HABBIT_MENU_KEYBOARD[4]),KeyboardButton(Text.HABBIT_MENU_KEYBOARD[5])]
-                ], resize_keyboard=True)
-    
-    PROGRAMM_MENU = ReplyKeyboardMarkup([
-                    [KeyboardButton(Text.PROGRAMM_MENU_KEYBOARD[0]),KeyboardButton(Text.PROGRAMM_MENU_KEYBOARD[1])],
-                    [KeyboardButton(Text.PROGRAMM_MENU_KEYBOARD[2]),KeyboardButton(Text.PROGRAMM_MENU_KEYBOARD[3])],
-                    [KeyboardButton(Text.PROGRAMM_MENU_KEYBOARD[4]),KeyboardButton(Text.PROGRAMM_MENU_KEYBOARD[5])]
-                ], resize_keyboard=True)
-    
-    ABOUT_ME_MENU = ReplyKeyboardMarkup([
-                    [KeyboardButton(Text.ABOUT_ME_MENU_KEYBOARD[0]),KeyboardButton(Text.ABOUT_ME_MENU_KEYBOARD[1])]
-                ], resize_keyboard=True)
-    
-    ABOUT_ME_CHANGE_NICK = ReplyKeyboardMarkup([
-                [KeyboardButton("Попробуем еще раз"), KeyboardButton("Мне нравится")],
-                [KeyboardButton("Оставить все как было")]
-            ], resize_keyboard=True)
-    
-    ADMIN_PANEL_1 = ReplyKeyboardMarkup([
-                    [KeyboardButton(Text.ADMIN_PANEL_1_KEYBOARD[0]), KeyboardButton(Text.ADMIN_PANEL_1_KEYBOARD[1])],
-                    
-                    [KeyboardButton(Text.ADMIN_PANEL_1_KEYBOARD[-2]),  # Назад
-                     KeyboardButton(Text.ADMIN_PANEL_1_KEYBOARD[-1])], # >
-                ], resize_keyboard=True)
-    
-    ADMIN_PANEL_2 = ReplyKeyboardMarkup([
-        
-                    [KeyboardButton(Text.ADMIN_PANEL_2_KEYBOARD[-3]),   # <
-                     KeyboardButton(Text.ADMIN_PANEL_2_KEYBOARD[-2]),   # Назад 
-                     KeyboardButton(Text.ADMIN_PANEL_2_KEYBOARD[-1])],  # >
-                ], resize_keyboard=True)
-    
-    ADMIN_PANEL_3 = ReplyKeyboardMarkup([
-        
-                    [KeyboardButton(Text.ADMIN_PANEL_3_KEYBOARD[-2]),  # <
-                     KeyboardButton(Text.ADMIN_PANEL_3_KEYBOARD[-1])], # Назад
-                ], resize_keyboard=True)
-    
-class State:
-    MAIN_MENU = 1
-
-    NOTIFY_MENU = 2
-    NOTIFY_MENU_LIST,       NOTIFY_MENU_ADD         = 21, 22
-    NOTIFY_MENU_DELETE,     NOTIFY_MENU_CHANGE      = 23, 24
-
-    # JOB_MENU = 3
-    # JOB_MENU_LIST,          JOB_MENU_ADD            = 31, 32
-    # JOB_MENU_DELETE,        JOB_MENU_CHANGE         = 33, 34
-
-    HABBIT_MENU = 4
-    HABBIT_MENU_LIST,       HABBIT_MENU_ADD         = 41, 42
-    HABBIT_MENU_DELETE,     HABBIT_MENU_CHANGE      = 43, 44
-
-    
-    PROGRAMM_MENU = 5
-    PROGRAMM_MENU_LIST,     PROGRAMM_MENU_ADD       = 51, 52
-    PROGRAMM_MENU_DELETE,   PROGRAMM_MENU_CHANGE    = 53, 54
-
-
-    ABOUT_ME_MENU = 6
-    ABOUT_ME_MENU_CHANGE_NICK = 61
-
-    ADMIN_PANEL_1, ADMIN_PANEL_2, ADMIN_PANEL_3     = 7, 77, 777
-
-    ADMIN_PANEL_TAIL_LOG_BOT = 700_001
-
-    MAIN_MENU_ADMIN = 8
-
-
-class Database: 
-    """
-    Родительский класс для работы с базой данных.  Мы не хотим переходить на postgresql!
-    Мы фанаты sqlite3!
-    """
-    def __init__(self):
-        # Мы ищем файл который исполняется
-        # Далее отступаем назад и в папке db делаем файл main.db
-        self.path = os.path.dirname(os.path.abspath(__file__)) + '/../db/main.db'
-
-    def run_query(self, query : str) -> None:
-        con = sqlite3.connect(self.path)
-        cur = con.cursor()
-        cur.execute(query)
-        con.commit()
-        cur.close()
-        con.close()
-
-    def run_many_query(self, query : str, arr : list[str]) -> None:
-        for item in arr:
-            self.run_query(query, item)
-
-    def get_from_query(self, query : str) -> list[any]:
-        con = sqlite3.connect(self.path)
-        cur = con.cursor()
-        cur.execute(query)
-        res = cur.fetchall()
-        cur.close()
-        con.close()
-        return res
-
-    def firstInitDatabase(self):
-        con = sqlite3.connect(self.path)
-        cur = con.cursor()
-        
-        # Хочется чтобы чат был чистый, тут пишутся сообщения на удаление
-        cur.execute(f"""
-            CREATE TABLE IF NOT EXISTS message_to_delete (
-                message_to_delete_id    INTEGER UNIQUE,
-                datetime_to_delete      TEXT NOT NULL,
-                chat_id                 TEXT NOT NULL,
-                message_id              TEXT NOT NULL,
-                deleted                 INTEGER DEFAULT 0,
-                PRIMARY KEY(message_to_delete_id)
-            );
-        """)
-        
-        # Нужна для работы class Logger(Database)
-        cur.execute(f"""
-            CREATE TABLE IF NOT EXISTS bot_log (
-                bot_log_id      INTEGER UNIQUE,
-                datetime        TEXT NOT NULL,
-                text            TEXT NOT NULL,
-                PRIMARY KEY(bot_log_id)
-            );
-        """)
-        # Нужна для работы class User(Database)
-        cur.execute(f"""
-            CREATE TABLE IF NOT EXISTS user (
-                id_user	        INTEGER UNIQUE,
-                tg_username	    TEXT NOT NULL UNIQUE,
-                bot_username	TEXT,
-                user_is_valid   INTEGER DEFAULT 1 CHECK (user_is_valid in (0, 1)),
-                PRIMARY KEY(id_user)
-            );
-        """)
-        # Тут указываются роли пользователей, данные заполняются при init
-        cur.execute(f"""
-            CREATE TABLE IF NOT EXISTS role (
-                id_role	            INTEGER,
-                name_role	        TEXT NOT NULL UNIQUE,
-                description_role	TEXT,
-                PRIMARY KEY(id_role)
-            );
-        """)
-        con.commit()
-
-        # Таблица напоминаний
-        cur.execute(f"""
-            CREATE TABLE IF NOT EXISTS notify (
-                id_notify               INTEGER,
-                chat_id                 INTEGER NOT NULL,
-                user_id                 INTEGER NOT NULL,
-                description             TEXT NOT NULL,
-                time_create             TEXT NOT NULL,
-                time_notify             TEXT NOT NULL,
-                sent                    INTEGER DEFAULT 0,
-                done                    INTEGER DEFAULT 0,
-                PRIMARY KEY(id_notify),
-                FOREIGN KEY(user_id) REFERENCES user(id_user)
-            );
-        """)
-        con.commit()
-
-        # Более крутые таблицы
-
-        # Тут указываются какие роли для каких пользователей заведены
-        cur.execute(f"""
-            CREATE TABLE IF NOT EXISTS user_role (
-                id_user_role	INTEGER,
-                user	INTEGER NOT NULL,
-                role	INTEGER NOT NULL,
-                PRIMARY KEY(id_user_role),
-                FOREIGN KEY(role) REFERENCES role(id_role),
-                FOREIGN KEY(user) REFERENCES user(id_user)
-            );
-        """)
-        con.commit()
-
-        try:
-            # Заполняем начальные значения для ролей в свежей базе
-            Database().run_many_query(f"""
-                INSERT INTO role
-                    (name_role, description_role)
-                VALUES 
-                    (?,?);
-            """, [("admin", "Имеет доступ ко всему контенту"),
-                     ("user", "Начальная роль всех пользователей")])
-        except Exception as e:
-            # Если видим ошибку, получается что такие значения есть.
-            print(e)
-        cur.close()
-        con.close()
-
-# Можно настроить минимальный уровень вывода в консоль или файл
-# logging.basicConfig(level=logging.INFO, filename="py_log.log",filemode="w")
-# logging.basicConfig(level=logging.INFO)
-
-class Logger(Database):
-    """
-    Данный класс работает с таблицей bot_log
-    Туда я хочу писать события и ошибки бота
-
-    TODO sec_taken - хочу сюда писать кол-во времени которое заняла та или иная операция
-    TODO хочется чтобы при краше, выдавался список ошибок которые были ранее, например 10 до. что привело к ошибке.
-    """
-
-    def __init__(self):
-        super().__init__()
-    
-    def log(self, message : str, level : str = 'INFO', verbose : bool = LOGGER_VERBOSE) -> None:
-        """
-        level = INFO | ERROR | WARNING | CRITICAL
-        """
-        assert message != '', "message is empty"
-        assert level in ['INFO', 'ERROR', 'WARNING', 'CRITICAL'], f"level cant be {level}"
-
-        Database().run_query(f"""
-            INSERT INTO bot_log 
-            (datetime, text)
-            VALUES
-            (datetime(), "{message}")
-        """)
-
-        if verbose:
-            match level:
-                case "INFO":
-                    logging.info(f"{message}")
-                case "ERROR":
-                    logging.error(f"{message}")
-                case "WARNING":
-                    logging.warning(f"{message}")
-                case "CRITICAL":
-                    logging.critical(f"{message}")
-                    exit()
-                    
-    def tail_log_bot(self, n : int) -> list[str] | str:
-        con = sqlite3.connect(self.path)
-        cur = con.cursor()
-        cur.execute(Text.tail_log_bot_t0.format(n))
-        res = cur.fetchall()
-        cur.close()
-        con.close()
-
-        if len(res) == 0:
-            return "Данная таблица пустая"
-        else:
-            return ["{} : {}\n\n".format(row[0], row[1]) for row in res]
-
-class User(Database):
-    """
-    def createUser(self, tg_username : str) -> None
-
-    def get_id_user(self, tg_username : str) -> int
-    def get_bot_username(self, tg_username : str) -> str
-    """
-    def __init__(self):
-        super().__init__()
-        self.default_user_role = 'user'
-        self.admin_user_role = 'admin'
-        self.admin_list = ['pagamov']
-
-    def createBot_username(self) -> str:
-        """
-        Делаем случайное имя для анонимного чата
-        """
-        pril = Text.createBot_username_t0
-        animals = Text.createBot_username_t1
-        dig = Text.createBot_username_t2
-
-        return f"{random.choice(pril)}_{random.choice(animals)}_{''.join([random.choice(dig) for i in range(5)])}"
-
-    def createUser(self, tg_username : str) -> None:
-        """
-        1. Добавляет пользователя в базу
-        
-        2. Ставит ему базовые права пользователя (роль)
-        
-        3. Проверяет есть ли ник в списке админов. Если есть - добавляет ему админские права
-        """
-        assert tg_username != '', "tg_username is empty"
-        con = sqlite3.connect(self.path)
-        cur = con.cursor()
-        Logger().log(f"Создаем пользователя {tg_username}")
-        cur.execute(Text.createUser_t0.format(tg_username, self.createBot_username()))
-        con.commit()
-        # Ставим пользователю доступ по умолчанию
-        Logger().log(f"Создаем пользователя {tg_username} - права по умолчанию")
-        cur.execute(Text.createUser_t1.format(tg_username, self.default_user_role))
-        con.commit()
-
-        # Админские штучки
-        if tg_username in self.admin_list:
-            Logger().log(f"Создаем пользователя {tg_username} - админские штучки")
-            cur.execute(Text.createUser_t2.format(tg_username, self.admin_user_role))
-            con.commit()
-
-        cur.close()
-        con.close()
-
-    def get_id_user(self, tg_username : str) -> int:
-        """
-        Вернем id_user из таблицы user по нику из tg. 
-        
-        -1 если пользователя нет в базе.
-        """
-        assert tg_username != '', "tg_username is empty"
-
-        con = sqlite3.connect(self.path)
-        cur = con.cursor()
-        Logger().log(f"Ищем пользователя с ником {tg_username}")
-        cur.execute(Text.get_id_user_t0.format(tg_username))
-        res = cur.fetchall()
-        cur.close()
-        con.close()
-        return -1 if len(res) == 0 else res[0][0]
-
-    def is_admin(self, tg_username : str) -> bool:
-        """
-        Проверяет, является ли человек админом в системе по нику в тг.
-        """
-        assert tg_username != '', "tg_username is empty"
-
-        con = sqlite3.connect(self.path)
-        cur = con.cursor()
-        Logger().log(f"Проверяем пользователя с ником {tg_username} является ли он админом")
-        cur.execute(Text.is_admin_t0.format(tg_username, self.admin_user_role))
-        res = cur.fetchall()
-        cur.close()
-        con.close()
-        return False if len(res) == 0 else True
-
-    def get_bot_username(self, tg_username : str) -> str:
-        assert tg_username != '', Text.get_bot_username_err
-
-        con = sqlite3.connect(self.path)
-        cur = con.cursor()
-        Logger().log(f"Ищем внутренний никнейм у пользователя с ником {tg_username}")
-        cur.execute(Text.get_bot_username_t0.format(tg_username))
-        res = cur.fetchall()
-        cur.close()
-        con.close()
-        bot_username : str = res[0][0]
-        assert bot_username != '', Text.get_bot_username_err
-        return bot_username
 
 # Wrapper section
 
@@ -531,7 +32,6 @@ def log_chat_message(func: Callable) -> Callable:
         print(f"Chat ID: {chat_id}, Message ID: {message_id}")
         return await func(update, context, *args, **kwargs)
     return wrapper
-
 
 # Handler section
 
@@ -637,56 +137,6 @@ async def MAIN_MENU_ADMIN(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 
 
-async def NOTIFY_MENU(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    text : str = update.message.text
-    tg_username : str = update.effective_user.username
-    
-    if text == Text.NOTIFY_MENU_KEYBOARD[0]:
-        await update.message.reply_text('_Твои напоминания', )
-        return State.NOTIFY_MENU
-    
-    elif text == Text.NOTIFY_MENU_KEYBOARD[1]:
-        await update.message.reply_text('_Давай добавим тебе напоминание', )
-        return State.NOTIFY_MENU
-    
-    elif text == Text.NOTIFY_MENU_KEYBOARD[2]:
-        await update.message.reply_text('_Сейчас удалим напоминания', )
-        return State.NOTIFY_MENU
-    
-    elif text == Text.NOTIFY_MENU_KEYBOARD[3]:
-        await update.message.reply_text('_Давай изменим напоминание', )
-        return State.NOTIFY_MENU_CHANGE
-    
-    elif text == Text.NOTIFY_MENU_KEYBOARD[4]:
-        await update.message.reply_text('_Что там по настройкам?', )
-        return State.NOTIFY_MENU
-    
-    elif text == Text.NOTIFY_MENU_KEYBOARD[5]:
-        match User().is_admin(tg_username):
-            case True:
-                await update.message.reply_text('Давай в основное меню, великий господин равный небу', reply_markup=Keyboard.MAIN_MENU_ADMIN)
-                return State.MAIN_MENU_ADMIN
-            case _:
-                await update.message.reply_text('Давай в основное меню', reply_markup=Keyboard.MAIN_MENU)
-                return State.MAIN_MENU
-            
-    else:
-        return State.NOTIFY_MENU
-
-async def NOTIFY_LIST():
-    pass
-
-async def NOTIFY_ADD():
-    pass
-
-async def NOTIFY_DELETE():
-    pass
-
-async def NOTIFY_CHANGE():
-    pass
-
-async def NOTIFY_SETTINGS():
-    pass
 
 
 # async def JOB_MENU(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -1018,7 +468,10 @@ async def notify_queue_handler(update : Update, _):
 
 # Main section
 
+
 async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    import html
+    import traceback
     # print(Text.error_t0.format(update, context.error))
     # await context.bot.send_message(chat_id=321911494,
     #                                text=f"Bot Error:\n<code>{html.escape(str(context.error))}</code>",
@@ -1050,8 +503,7 @@ def main():
     
     db = Database()
     db.firstInitDatabase()
-    logger = Logger()
-    
+ 
     try:
         Logger().log("Starting bot...")
         app = (ApplicationBuilder()
@@ -1069,6 +521,10 @@ def main():
     states[State.MAIN_MENU_ADMIN] =             [MessageHandler(filters.TEXT & (~filters.COMMAND), MAIN_MENU_ADMIN)]
     
     states[State.NOTIFY_MENU] =                 [MessageHandler(filters.TEXT & (~filters.COMMAND), NOTIFY_MENU)]
+    states[State.NOTIFY_MENU_ADD_DESCRIPTION] = [MessageHandler(filters.TEXT & (~filters.COMMAND), NOTIFY_MENU_ADD_DESCRIPTION)]
+    states[State.NOTIFY_MENU_ADD_DATEPICK] =    [MessageHandler(filters.TEXT & (~filters.COMMAND), NOTIFY_MENU_ADD_DATEPICK)]
+    states[State.NOTIFY_MENU_ADD_TIMEPICK] =    [MessageHandler(filters.TEXT & (~filters.COMMAND), NOTIFY_MENU_ADD_TIMEPICK)]
+
     # states[State.JOB_MENU] =                    [MessageHandler(filters.TEXT & (~filters.COMMAND), JOB_MENU)]
     states[State.HABBIT_MENU] =                 [MessageHandler(filters.TEXT & (~filters.COMMAND), HABBIT_MENU)]
     states[State.PROGRAMM_MENU] =               [MessageHandler(filters.TEXT & (~filters.COMMAND), PROGRAMM_MENU)]
@@ -1084,9 +540,10 @@ def main():
     states[State.ADMIN_PANEL_3] =               [MessageHandler(filters.TEXT & (~filters.COMMAND), ADMIN_PANEL_3)]
     states[ConversationHandler.END] =           [MessageHandler(filters.TEXT & (~filters.COMMAND), handle_final)]
 
-    # states = dict(map(lambda i, k : k.append(CallbackQueryHandler(notify_queue_handler)), states))
     for key, _ in states.items():
         states[key].append(CallbackQueryHandler(notify_queue_handler))
+
+
     app.add_handler(ConversationHandler(
         entry_points=entry_points,
         states=states,
