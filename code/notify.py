@@ -2,14 +2,10 @@
 from telegram import ReplyKeyboardRemove, Update
 from telegram.ext import ContextTypes
 import re
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timedelta
 
 from database import Database, User
 from const import *
-
-
-
-
 
 async def NOTIFY_MENU(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     text : str = update.message.text
@@ -89,9 +85,9 @@ async def NOTIFY_MENU_ADD_DATEPICK(update: Update, context: ContextTypes.DEFAULT
         await update.message.reply_text("Что то не так с вашими данными, попробуйте ввести в виде dd.mm.yy", reply_markup=ReplyKeyboardMarkup([[KeyboardButton("Отмена")]]))
         return State.NOTIFY_MENU_ADD_DATEPICK
 
-    dig : list[int] = list(map(int, re.findall(r'\d', text)))
+    dig : list[int] = list(map(int, re.findall(r'\d+', text)))
     try:
-        date = datetime.datetime(year=2000 + dig[2], month=dig[1], day=dig[0])
+        date = datetime(year=2000 + dig[2], month=dig[1], day=dig[0])
 
         if date.date() < datetime.now().date():
             await update.message.reply_text("Что то не так с вашими данными, вы ввели дату раньше сегодня, еще раз", reply_markup=ReplyKeyboardMarkup([[KeyboardButton("Отмена")]]))
@@ -107,7 +103,6 @@ async def NOTIFY_MENU_ADD_DATEPICK(update: Update, context: ContextTypes.DEFAULT
     return State.NOTIFY_MENU_ADD_TIMEPICK
 
 async def NOTIFY_MENU_ADD_TIMEPICK(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    
     text : str = update.message.text
     tg_username : str = update.effective_user.username
 
@@ -119,7 +114,7 @@ async def NOTIFY_MENU_ADD_TIMEPICK(update: Update, context: ContextTypes.DEFAULT
         await update.message.reply_text("Что то не так с вашими данными, попробуйте ввести в виде hh.mm", reply_markup=ReplyKeyboardMarkup([[KeyboardButton("Отмена")]]))
         return State.NOTIFY_MENU_ADD_TIMEPICK
     
-    dig : list[int] = list(map(int, re.findall(r'\d', text)))
+    dig : list[int] = list(map(int, re.findall(r'\d+', text)))
 
     if 0 <= dig[0] < 24 and 0 <= dig[1] < 60:
         pass
@@ -127,22 +122,26 @@ async def NOTIFY_MENU_ADD_TIMEPICK(update: Update, context: ContextTypes.DEFAULT
         await update.message.reply_text("Что то не так с вашими данными, попробуйте ввести в виде hh.mm", reply_markup=ReplyKeyboardMarkup([[KeyboardButton("Отмена")]]))
         return State.NOTIFY_MENU_ADD_TIMEPICK
 
-    description = context.user_data['NOTIFY_MENU_ADD_DESCRIPTION']
-    time = datetime.time(hour=dig[0], minute=dig[1])
-    date = context.user_data['NOTIFY_MENU_ADD_DATEPICK']
-
-    if date.date() == datetime.now().date():
-        if time < datetime.now().time():
+    description : str = context.user_data['NOTIFY_MENU_ADD_DESCRIPTION']
+    d : datetime = context.user_data['NOTIFY_MENU_ADD_DATEPICK']
+    t : time = time(hour=dig[0], minute=dig[1])
+    
+    if d.date() == datetime.now().date():
+        # TODO пока что мы работаем только в UTC+3, как же это решить то...?
+        if t < (datetime.now() + timedelta(hours=3)).time():
             await update.message.reply_text("Что то не так с вашими данными, вы ввели время раньше чем времени сейчас, еще раз", reply_markup=ReplyKeyboardMarkup([[KeyboardButton("Отмена")]]))
             return State.NOTIFY_MENU_ADD_TIMEPICK
-    
+
+    date_str = f"{d.year}-{d.month if len(str(d.month)) == 2 else '0'+str(d.month)}-{d.day if len(str(d.day))==2 else '0'+str(d.day)}"
+    time_str = f"{t.hour if len(str(t.hour))==2 else '0'+str(t.hour)}:{t.minute if len(str(t.minute)) == 2 else '0'+str(t.minute)}"
+
     Database().run_query(f"""
         INSERT INTO notify
             (chat_id, user_id, description, time_create, time_notify)
         VALUES   
             ({context._chat_id},
             (SELECT id_user FROM user WHERE tg_username = "{tg_username}" limit 1),
-            "{description}", DATETIME('NOW'), DATETIME('{date.year}-{date.month}-{date.day} {time.hour}:{time.minutes}:00'))""")
+            "{description}", DATETIME('NOW'), DATETIME('{date_str} {time_str}:00'))""")
 
     await update.message.reply_text("Напоминание добавлено", reply_markup=Keyboard.NOTIFY_MENU)
     return State.NOTIFY_MENU

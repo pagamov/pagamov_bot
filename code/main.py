@@ -418,7 +418,7 @@ async def check_notify_queue(context: ContextTypes.DEFAULT_TYPE):
     notify_to_send = db.get_from_query(f"""
         SELECT id_notify, chat_id, description
                                 FROM notify
-                                WHERE sent = 0 and DATETIME('now') >= time_notify
+                                WHERE sent = 0 and time_notify <= DATETIME('now', '+3 hours')
     """)
 
     if len(notify_to_send) != 0:
@@ -461,7 +461,7 @@ async def notify_queue_handler(update : Update, _):
         id = callback_data['id']
         Database().run_query(f"""
             UPDATE notify
-            SET sent = 0, time_notify=DATETIME('now', '+1 minute')
+            SET sent = 0, time_notify=DATETIME('now', '+3 hour','+1 minute')
             WHERE id_notify = {int(id)}
         """)
         await query.edit_message_text(text="Отложил на 1 мин.")
@@ -516,9 +516,12 @@ def main():
                             MessageHandler(filters.TEXT & (~filters.COMMAND), FROM_IDLE_MENU)]
     
     states = {}
+
+    basic_filters : filters = filters.TEXT & (~filters.COMMAND)
+    
     states[State.MAIN_MENU] = [MessageHandler(filters.TEXT & (~filters.COMMAND), MAIN_MENU)]
     
-    states[State.MAIN_MENU_ADMIN] =             [MessageHandler(filters.TEXT & (~filters.COMMAND), MAIN_MENU_ADMIN)]
+    states[State.MAIN_MENU_ADMIN] =             [MessageHandler(basic_filters, MAIN_MENU_ADMIN)]
     
     states[State.NOTIFY_MENU] =                 [MessageHandler(filters.TEXT & (~filters.COMMAND), NOTIFY_MENU)]
     states[State.NOTIFY_MENU_ADD_DESCRIPTION] = [MessageHandler(filters.TEXT & (~filters.COMMAND), NOTIFY_MENU_ADD_DESCRIPTION)]
