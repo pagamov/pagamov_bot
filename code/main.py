@@ -528,7 +528,7 @@ def main():
     states[State.NOTIFY_MENU_ADD_DATEPICK] =    [MessageHandler(filters.TEXT & (~filters.COMMAND), NOTIFY_MENU_ADD_DATEPICK)]
     states[State.NOTIFY_MENU_ADD_TIMEPICK] =    [MessageHandler(filters.TEXT & (~filters.COMMAND), NOTIFY_MENU_ADD_TIMEPICK)]
 
-    # states[State.JOB_MENU] =                    [MessageHandler(filters.TEXT & (~filters.COMMAND), JOB_MENU)]
+    # states[State.JOB_MENU] =                  [MessageHandler(filters.TEXT & (~filters.COMMAND), JOB_MENU)]
     states[State.HABBIT_MENU] =                 [MessageHandler(filters.TEXT & (~filters.COMMAND), HABBIT_MENU)]
     states[State.PROGRAMM_MENU] =               [MessageHandler(filters.TEXT & (~filters.COMMAND), PROGRAMM_MENU)]
     

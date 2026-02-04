@@ -63,7 +63,6 @@ async def NOTIFY_MENU(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
 async def NOTIFY_MENU_ADD_DESCRIPTION(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text : str = update.message.text
-    tg_username : str = update.effective_user.username
 
     if text == "Отменить":
         await update.message.reply_text("Возвращаемся в напоминаниям", reply_markup=Keyboard.NOTIFY_MENU)
@@ -75,7 +74,6 @@ async def NOTIFY_MENU_ADD_DESCRIPTION(update: Update, context: ContextTypes.DEFA
 
 async def NOTIFY_MENU_ADD_DATEPICK(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text : str = update.message.text
-    tg_username : str = update.effective_user.username
 
     if text == "Отменить":
         await update.message.reply_text("Возвращаемся в напоминаниям", reply_markup=Keyboard.NOTIFY_MENU)

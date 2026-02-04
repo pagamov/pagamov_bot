@@ -93,12 +93,8 @@ class Logger:
         assert message != '', "message is empty"
         assert level in ['INFO', 'ERROR', 'WARNING', 'CRITICAL'], f"level cant be {level}"
 
-        Database().run_query(f"""
-            INSERT INTO bot_log
-            (datetime, text)
-            VALUES
-            (datetime(), "{message}")
-        """)
+
+        Database().run_query(Text.log_insert_query.format(message))
 
         if verbose:
             match level:

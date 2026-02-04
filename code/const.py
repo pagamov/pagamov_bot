@@ -62,15 +62,16 @@ class Text:
     ADMIN_PANEL_2_KEYBOARD : list[str] = [] + ["<","Назад",">"]
     ADMIN_PANEL_3_KEYBOARD : list[str] = [] + ["<","Назад"]
 
+    ABOUT_ME_CHANGE_NICK_KEYBOARD : list[str] = ["Попробуем еще раз", "Мне нравится", "Оставить все как было"]
+
     error_t0 : str = """Update:\n\n{}\n\nCaused error:\n\n{}"""
 
     createBot_username_t0 : list[str] = ["Удачливый","Смелый","Весёлый","Храбрый","Гениальный","Остроумный",
-                                           "Талантливый","Умный","Забавный","Быстрый","Честный","Осторожный",
-                                           "Решительный","Проницательный","Верный","Любимый","Дерзкий",
-                                           "Очаровательный","Щедрый","Находчивый"]
+                                         "Талантливый","Умный","Забавный","Быстрый","Честный","Осторожный",
+                                         "Решительный","Проницательный","Верный","Любимый","Дерзкий",
+                                         "Очаровательный","Щедрый","Находчивый"]
     
-    createBot_username_t1 : list[str] = ['слон','тигр','медведь','лев','крокодил','голубь','жираф',
-                                           'верблюд','броненосец','кот']
+    createBot_username_t1 : list[str] = ['слон','тигр','медведь','лев','крокодил','голубь','жираф','верблюд','броненосец','кот']
     
     createBot_username_t2 : list[str] = ['0','1','2','3','4','5','6','7','8','9']
 
@@ -199,6 +200,13 @@ class Text:
     firstInitDatabase_insert_role_arr : list = [
                 ("admin", "Имеет доступ ко всему контенту"),
                 ("user", "Начальная роль всех пользователей")]
+    
+    log_insert_query : str = """
+            INSERT INTO bot_log
+                (datetime, text)
+            VALUES
+                (datetime(), "{}")
+        """
 
 
 
@@ -243,20 +251,21 @@ class Keyboard:
                     [KeyboardButton(Text.ABOUT_ME_MENU_KEYBOARD[0]),KeyboardButton(Text.ABOUT_ME_MENU_KEYBOARD[1])]
                 ], resize_keyboard=True)
     
+    
     ABOUT_ME_CHANGE_NICK = ReplyKeyboardMarkup([
-                [KeyboardButton("Попробуем еще раз"), KeyboardButton("Мне нравится")],
-                [KeyboardButton("Оставить все как было")]
+                [KeyboardButton(Text.ABOUT_ME_CHANGE_NICK_KEYBOARD[0]), KeyboardButton(Text.ABOUT_ME_CHANGE_NICK_KEYBOARD[1])],
+                [KeyboardButton(Text.ABOUT_ME_CHANGE_NICK_KEYBOARD[2])]
             ], resize_keyboard=True)
     
     ADMIN_PANEL_1 = ReplyKeyboardMarkup([
                     [KeyboardButton(Text.ADMIN_PANEL_1_KEYBOARD[0]), KeyboardButton(Text.ADMIN_PANEL_1_KEYBOARD[1])],
-                    
+                    # 
                     [KeyboardButton(Text.ADMIN_PANEL_1_KEYBOARD[-2]),  # Назад
                      KeyboardButton(Text.ADMIN_PANEL_1_KEYBOARD[-1])], # >
                 ], resize_keyboard=True)
     
     ADMIN_PANEL_2 = ReplyKeyboardMarkup([
-        
+                    # 
                     [KeyboardButton(Text.ADMIN_PANEL_2_KEYBOARD[-3]),   # <
                      KeyboardButton(Text.ADMIN_PANEL_2_KEYBOARD[-2]),   # Назад 
                      KeyboardButton(Text.ADMIN_PANEL_2_KEYBOARD[-1])],  # >
@@ -272,31 +281,41 @@ class State:
     MAIN_MENU = 1
 
     NOTIFY_MENU = 2
-    NOTIFY_MENU_LIST,       NOTIFY_MENU_ADD         = 21, 22
-    NOTIFY_MENU_DELETE,     NOTIFY_MENU_CHANGE      = 23, 24
+    NOTIFY_MENU_LIST = 21
+    NOTIFY_MENU_ADD = 22
+    NOTIFY_MENU_DELETE = 23
+    NOTIFY_MENU_CHANGE = 24
 
     NOTIFY_MENU_ADD_DESCRIPTION = 220
     NOTIFY_MENU_ADD_DATEPICK = 221
     NOTIFY_MENU_ADD_TIMEPICK = 222
 
     # JOB_MENU = 3
-    # JOB_MENU_LIST,          JOB_MENU_ADD            = 31, 32
-    # JOB_MENU_DELETE,        JOB_MENU_CHANGE         = 33, 34
+    # JOB_MENU_LIST = 31
+    # JOB_MENU_ADD = 32
+    # JOB_MENU_DELETE = 32
+    # JOB_MENU_CHANGE = 32
 
     HABBIT_MENU = 4
-    HABBIT_MENU_LIST,       HABBIT_MENU_ADD         = 41, 42
-    HABBIT_MENU_DELETE,     HABBIT_MENU_CHANGE      = 43, 44
+    HABBIT_MENU_LIST = 41
+    HABBIT_MENU_ADD = 42
+    HABBIT_MENU_DELETE = 43
+    HABBIT_MENU_CHANGE = 44
 
     
     PROGRAMM_MENU = 5
-    PROGRAMM_MENU_LIST,     PROGRAMM_MENU_ADD       = 51, 52
-    PROGRAMM_MENU_DELETE,   PROGRAMM_MENU_CHANGE    = 53, 54
+    PROGRAMM_MENU_LIST = 51
+    PROGRAMM_MENU_ADD = 52
+    PROGRAMM_MENU_DELETE = 53
+    PROGRAMM_MENU_CHANGE = 54
 
 
     ABOUT_ME_MENU = 6
     ABOUT_ME_MENU_CHANGE_NICK = 61
 
-    ADMIN_PANEL_1, ADMIN_PANEL_2, ADMIN_PANEL_3     = 7, 77, 777
+    ADMIN_PANEL_1 = 7
+    ADMIN_PANEL_2 = 77
+    ADMIN_PANEL_3 = 777
 
     ADMIN_PANEL_TAIL_LOG_BOT = 700_001
 
