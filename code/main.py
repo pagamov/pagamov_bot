@@ -14,7 +14,6 @@ from typing import Callable
 
 from const import *
 from database import *
-
 from notify import *
 
 # TODO сделать изменение внутреннего аноним ника
@@ -96,12 +95,14 @@ async def FROM_IDLE_MENU(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
 
     if User().is_admin(tg_username):
         await update.message.reply_text(
-            Text.FROM_IDLE_MENU_t0, reply_markup=Keyboard.MAIN_MENU_ADMIN)
+            text=Text.FROM_IDLE_MENU_t0,
+            reply_markup=Keyboard.MAIN_MENU_ADMIN)
 
         return State.MAIN_MENU_ADMIN
     else:
         await update.message.reply_text(
-            Text.FROM_IDLE_MENU_t1, reply_markup=Keyboard.MAIN_MENU)
+            text=Text.FROM_IDLE_MENU_t1,
+            reply_markup=Keyboard.MAIN_MENU)
 
         return State.MAIN_MENU
 
@@ -473,9 +474,7 @@ async def handle_final(update: Update, _: ContextTypes.DEFAULT_TYPE):
 
 
 async def check_notify_queue(context: ContextTypes.DEFAULT_TYPE):
-    db = Database()
-
-    notify_to_send = db.get_from_query(f"""
+    notify_to_send = Database().get_from_query(f"""
         SELECT id_notify, chat_id, description
             FROM notify
             WHERE sent = 0 and time_notify <= DATETIME('now', '+3 hours')
@@ -501,7 +500,7 @@ async def check_notify_queue(context: ContextTypes.DEFAULT_TYPE):
                                                "id": id}))
                      ]]))
 
-            db.run_query(f"""
+            Database().run_query(f"""
                 UPDATE notify
                 SET sent=1
                 WHERE id_notify = {id}
@@ -571,21 +570,13 @@ async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"<pre>{html.escape(tb_string)}</pre>"
     )
 
-    # Finally, send the message
     await context.bot.send_message(
         chat_id=321911494, text=message, parse_mode=ParseMode.HTML
     )
 
-# Main section
-
 
 def main():
-    # print('os.path.abspath(__file__)', os.path.abspath(__file__))
-    # print('os.path.dirname(os.path.abspath(__file__))',
-    #        os.path.dirname(os.path.abspath(__file__)))
-
-    db = Database()
-    db.firstInitDatabase()
+    Database().firstInitDatabase()
 
     try:
         Logger().log("Starting bot...")
@@ -602,7 +593,8 @@ def main():
 
     states = {}
 
-    states[State.MAIN_MENU] = [MessageHandler(basic_filters, MAIN_MENU)]
+    states[State.MAIN_MENU] = \
+        [MessageHandler(basic_filters, MAIN_MENU)]
 
     states[State.MAIN_MENU_ADMIN] = \
         [MessageHandler(basic_filters, MAIN_MENU_ADMIN)]
