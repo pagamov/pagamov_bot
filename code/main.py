@@ -40,9 +40,7 @@ def log_chat_message(func: Callable) -> Callable:
 
 
 async def start_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
-    """
-    Тут мы начинаем работу в режиме диалога.
-    Возвращаем меню
+    """Тут мы начинаем работу в режиме диалога. Возвращаем меню.
     """
 
     text: str = update.message.text
@@ -82,7 +80,6 @@ async def start_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
                 reply_markup=Keyboard.MAIN_MENU)
 
             return State.MAIN_MENU
-
 
 async def FROM_IDLE_MENU(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
     """Когда бот не работает и потом запускается, 
@@ -247,7 +244,7 @@ async def ABOUT_ME_MENU(update: Update,
     user = User()
 
     if text == Text.ABOUT_ME_MENU_KEYBOARD[0]:
-        context.user_data['new_bot_username'] = user.createBot_username()
+        context.user_data["new_bot_username"] = user.createBot_username()
         cur_username: str = user.get_bot_username(tg_username)
 
         await update.message.reply_text(
@@ -282,7 +279,7 @@ async def ABOUT_ME_MENU_CHANGE_NICK(update: Update,
     tg_username: str = update.effective_user.username
 
     if text == Text.ABOUT_ME_MENU_CHANGE_NICK_t2:
-        context.user_data['new_bot_username'] = User().createBot_username()
+        context.user_data["new_bot_username"] = User().createBot_username()
 
         await update.message.reply_text(
             Text.ABOUT_ME_MENU_CHANGE_NICK_t1.format(
@@ -295,7 +292,7 @@ async def ABOUT_ME_MENU_CHANGE_NICK(update: Update,
         # Применить текущий ник к пользователю
         Database().run_query(
             Text.ABOUT_ME_MENU_CHANGE_NICK_t6.format(
-                context.user_data['new_bot_username'], tg_username))
+                context.user_data["new_bot_username"], tg_username))
 
         await update.message.reply_text(
             Text.ABOUT_ME_MENU_CHANGE_NICK_t5,

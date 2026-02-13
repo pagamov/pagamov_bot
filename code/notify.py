@@ -7,30 +7,25 @@ from datetime import datetime, time, timedelta
 from database import Database, User
 from const import *
 
-async def NOTIFY_MENU(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
+async def NOTIFY_MENU(update: Update, 
+                      context: ContextTypes.DEFAULT_TYPE) -> int:
+    
     text : str = update.message.text
     tg_username : str = update.effective_user.username
     
     if text == Text.NOTIFY_MENU_KEYBOARD[0]:
-        res = Database().get_from_query(f"""
-            SELECT
-                id_notify, description, time_notify 
-            FROM
-                notify
-            WHERE
-                user_id = (SELECT id_user FROM user
-                           WHERE tg_username = "{tg_username}" limit 1)
-                AND done = 0
-        """)
+        notify_list = Database().get_from_query(
+            Text.NOTIFY_MENU_get_notify.format(tg_username))
 
-        if len(res) == 0:
+        if len(notify_list) == 0:
             await update.message.reply_text(
-                'Список твоих напоминаний пуст',
+                Text.NOTIFY_MENU_empty_list,
                 reply_markup=Keyboard.NOTIFY_MENU)
         else:
-            reply = ''
-            for i, item in enumerate(res):
-                reply += "№{}. id:{} - {} (уведомить в {})\n\n".format(i, item[0], item[1], item[2])
+            reply : str = ''
+            for i, item in enumerate(notify_list):
+                reply += Text.NOTIFY_MENU_item_in_list.format(
+                    i, item[0], item[1], item[2])
             await update.message.reply_text(
                 text=reply, 
                 reply_markup=Keyboard.NOTIFY_MENU)
@@ -39,17 +34,32 @@ async def NOTIFY_MENU(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
     
     elif text == Text.NOTIFY_MENU_KEYBOARD[1]:
         await update.message.reply_text(
-            'О чем тебе нужно напомнить?',
+            Text.NOTIFY_MENU_about_question,
             reply_markup=Keyboard.NOTIFY_MENU_ADD_CANCEL_KEYBOARD)
         
         return State.NOTIFY_MENU_ADD_DESCRIPTION
     
     elif text == Text.NOTIFY_MENU_KEYBOARD[2]:
-        await update.message.reply_text('_Сейчас удалим напоминания', )
-        return State.NOTIFY_MENU
+        
+        notify_list = Database().get_from_query(
+            Text.NOTIFY_MENU_get_notify.format(tg_username))
+        
+        if len(notify_list) == 0:
+            await update.message.reply_text(
+                Text.NOTIFY_MENU_empty_list,
+                reply_markup=Keyboard.NOTIFY_MENU)
+        else:
+            context.user_data["notify_list_pivot"] = 0
+            context.user_data["notify_list"] = notify_list
+            
+        
+        # await update.message.reply_text(
+        #     '_Сейчас удалим напоминания', )
+        # return State.NOTIFY_MENU
     
     elif text == Text.NOTIFY_MENU_KEYBOARD[3]:
-        await update.message.reply_text('_Давай изменим напоминание', )
+        await update.message.reply_text(
+            '_Давай изменим напоминание', )
         return State.NOTIFY_MENU_CHANGE
     
     elif text == Text.NOTIFY_MENU_KEYBOARD[4]:
@@ -90,7 +100,7 @@ async def NOTIFY_MENU_ADD_DESCRIPTION(update: Update,
         context.user_data['NOTIFY_MENU_ADD_DESCRIPTION'] = text
         await update.message.reply_text(
             "Какого числа? (dd.mm.yy)", 
-            reply_markup=Keyboard.NOTIFY_MENU_ADD_CANCEL_KEYBOARD)
+            reply_markup=Keyboard.get_NOTIFY_MENU_ADD_Date_pick_keyboard())
         
         return State.NOTIFY_MENU_ADD_DATEPICK
 
@@ -105,10 +115,10 @@ async def NOTIFY_MENU_ADD_DATEPICK(update: Update,
         
         return State.NOTIFY_MENU
 
-    if re.match(r'[0-9]{1,2}[.:, ][0-9]{1,2}[.:, ][0-9]{2}', text) == None:
+    if len(re.findall(r'[0-9]{1,2}[.:, ][0-9]{1,2}[.:, ][0-9]{2}', text)) == 0:
         await update.message.reply_text(
             Text.NOTIFY_MENU_ADD_DATEPICK_t0,
-            reply_markup=Keyboard.NOTIFY_MENU_ADD_CANCEL_KEYBOARD)
+            reply_markup=Keyboard.get_NOTIFY_MENU_ADD_Date_pick_keyboard())
         
         return State.NOTIFY_MENU_ADD_DATEPICK
 
@@ -120,21 +130,21 @@ async def NOTIFY_MENU_ADD_DATEPICK(update: Update,
             await update.message.reply_text(
                 "Что то не так с вашими данными, \
                     вы ввели дату раньше сегодня, еще раз", 
-                reply_markup=Keyboard.NOTIFY_MENU_ADD_CANCEL_KEYBOARD)
+                reply_markup=Keyboard.get_NOTIFY_MENU_ADD_Date_pick_keyboard())
             
             return State.NOTIFY_MENU_ADD_DATEPICK
 
     except ValueError:
         await update.message.reply_text(
             Text.NOTIFY_MENU_ADD_DATEPICK_t0,
-            reply_markup=Keyboard.NOTIFY_MENU_ADD_CANCEL_KEYBOARD)
+            reply_markup=Keyboard.get_NOTIFY_MENU_ADD_Date_pick_keyboard())
         return State.NOTIFY_MENU_ADD_DATEPICK
     
     context.user_data['NOTIFY_MENU_ADD_DATEPICK'] = date
 
     await update.message.reply_text(
         "Введите время (hh.mm)", 
-        reply_markup=Keyboard.NOTIFY_MENU_ADD_CANCEL_KEYBOARD)
+        reply_markup=Keyboard.get_NOTIFY_MENU_ADD_Time_pick_keyboard())
     
     return State.NOTIFY_MENU_ADD_TIMEPICK
 
@@ -149,10 +159,10 @@ async def NOTIFY_MENU_ADD_TIMEPICK(update: Update,
             "Возвращаемся в напоминаниям", reply_markup=Keyboard.NOTIFY_MENU)
         return State.NOTIFY_MENU
 
-    if re.match(r'[0-9]{1,2}[.:, ][0-9]{1,2}', text) == None:
+    if len(re.findall(r'[0-9]{1,2}[.:, ][0-9]{1,2}', text)) == 0:
         await update.message.reply_text(
             Text.NOTIFY_MENU_ADD_TIMEPICK_t0, 
-            reply_markup=Keyboard.NOTIFY_MENU_ADD_CANCEL_KEYBOARD)
+            reply_markup=Keyboard.get_NOTIFY_MENU_ADD_Time_pick_keyboard())
         
         return State.NOTIFY_MENU_ADD_TIMEPICK
     
@@ -161,7 +171,7 @@ async def NOTIFY_MENU_ADD_TIMEPICK(update: Update,
     if not (0 <= dig[0] < 24 and 0 <= dig[1] < 60):
         await update.message.reply_text(
             Text.NOTIFY_MENU_ADD_TIMEPICK_t0, 
-            reply_markup=Keyboard.NOTIFY_MENU_ADD_CANCEL_KEYBOARD)
+            reply_markup=Keyboard.get_NOTIFY_MENU_ADD_Time_pick_keyboard())
         
         return State.NOTIFY_MENU_ADD_TIMEPICK
 
@@ -174,9 +184,8 @@ async def NOTIFY_MENU_ADD_TIMEPICK(update: Update,
         and t < (datetime.now() + timedelta(hours=3)).time():
         
         await update.message.reply_text(
-            "Что то не так с вашими данными, \
-                вы ввели время раньше чем времени сейчас, еще раз", 
-            reply_markup=Keyboard.NOTIFY_MENU_ADD_CANCEL_KEYBOARD)
+            Text.NOTIFY_MENU_time_err, 
+            reply_markup=Keyboard.get_NOTIFY_MENU_ADD_Time_pick_keyboard())
         
         return State.NOTIFY_MENU_ADD_TIMEPICK
 
@@ -184,21 +193,16 @@ async def NOTIFY_MENU_ADD_TIMEPICK(update: Update,
                f"-{d.month if len(str(d.month)) == 2 else '0' + str(d.month)}"+\
                f"-{d.day if len(str(d.day)) == 2 else '0' + str(d.day)}"
                
-    time_str = f"{t.hour if len(str(t.hour))==2 else '0'+str(t.hour)}:" + \
-               f"{t.minute if len(str(t.minute)) == 2 else '0'+str(t.minute)}"
+    time_str = f"{t.hour if len(str(t.hour)) == 2 else '0' + str(t.hour)}:" + \
+               f"{t.minute if len(str(t.minute)) == 2 else '0' + str(t.minute)}"
 
-    Database().run_query(f"""
-        INSERT INTO notify
-            (chat_id, user_id, description, time_create, time_notify)
-        VALUES   
-            ({context._chat_id},
-            (SELECT id_user FROM user 
-                WHERE tg_username = "{tg_username}" limit 1),
-            "{description}", 
-            DATETIME('NOW'), DATETIME('{date_str} {time_str}:00'))""")
+    Database().run_query(
+        Text.NOTIFY_MENU_insert_notify.format(
+            context._chat_id, tg_username, description, date_str, time_str
+        ))
 
     await update.message.reply_text(
-        "Напоминание добавлено", 
+        Text.NOTIFY_MENU_exit_add_succ, 
         reply_markup=Keyboard.NOTIFY_MENU)
     
     return State.NOTIFY_MENU

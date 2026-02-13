@@ -2,6 +2,7 @@ from typing import Final
 import os
 from dotenv import load_dotenv
 from enum import Enum
+from datetime import datetime, timedelta
 
 from telegram import KeyboardButton, ReplyKeyboardMarkup
 
@@ -295,13 +296,46 @@ class Text:
     User_t4 = "Ищем пользователя с ником {}"
     User_t5 = "Проверяем пользователя с ником {} является ли он админом"
     User_t6 = "Ищем внутренний никнейм у пользователя с ником {}"
+    
+    
+    NOTIFY_MENU_get_notify = """
+        SELECT
+            id_notify, description, time_notify 
+        FROM
+            notify
+        WHERE
+            user_id = (SELECT id_user FROM user
+                        WHERE tg_username = "{}" limit 1)
+            AND done = 0
+    """
+    
+    NOTIFY_MENU_empty_list = "Список твоих напоминаний пуст"
+    NOTIFY_MENU_about_question = "О чем тебе нужно напомнить?"
+    NOTIFY_MENU_item_in_list = "№{}. id:{} - {} (уведомить в {})\n\n"
+    
+    NOTIFY_MENU_insert_notify = """
+        INSERT INTO notify
+            (chat_id, user_id, description, time_create, time_notify)
+        VALUES   
+            ({},
+            (SELECT id_user FROM user 
+                WHERE tg_username = "{}" limit 1),
+            "{}", 
+            DATETIME('NOW'), DATETIME('{} {}:00'))
+    """
+    
+    NOTIFY_MENU_time_err = "Что то не так с вашими данными, \
+                вы ввели время раньше чем времени сейчас, еще раз"
+    
+    
+    NOTIFY_MENU_exit_add_succ = "Напоминание добавлено"
+    
 
 
 class Keyboard:
     MAIN_MENU = \
         ReplyKeyboardMarkup([
-            [KeyboardButton(Text.MAIN_MENU_KEYBOARD[0]),
-             KeyboardButton(Text.MAIN_MENU_KEYBOARD[1])],
+            [KeyboardButton(Text.MAIN_MENU_KEYBOARD[0])],
             #
             [KeyboardButton(Text.MAIN_MENU_KEYBOARD[2]),
              KeyboardButton(Text.MAIN_MENU_KEYBOARD[3])],
@@ -311,8 +345,7 @@ class Keyboard:
 
     MAIN_MENU_ADMIN = \
         ReplyKeyboardMarkup([
-            [KeyboardButton(Text.MAIN_MENU_ADMIN_KEYBOARD[0]),
-             KeyboardButton(Text.MAIN_MENU_ADMIN_KEYBOARD[1])],
+            [KeyboardButton(Text.MAIN_MENU_ADMIN_KEYBOARD[0])],
             #
             [KeyboardButton(Text.MAIN_MENU_ADMIN_KEYBOARD[2]),
              KeyboardButton(Text.MAIN_MENU_ADMIN_KEYBOARD[3])],
@@ -393,6 +426,43 @@ class Keyboard:
         ReplyKeyboardMarkup([
             [KeyboardButton(Text.ADMIN_PANEL_3_KEYBOARD[-2]),  # <
              KeyboardButton(Text.ADMIN_PANEL_3_KEYBOARD[-1])],  # Назад
+        ], resize_keyboard=True)
+        
+    def get_NOTIFY_MENU_ADD_Date_pick_keyboard():
+        
+        today = datetime.now() + timedelta(hours=3) # utc + 3
+        tomorrow = datetime.now() + timedelta(hours=3, days=1)
+        
+        return ReplyKeyboardMarkup([
+            [
+                KeyboardButton("Сегодня ({}.{}.{})".format(
+                    today.day, today.month, today.year - 2000)),
+                
+                KeyboardButton("Завтра ({}.{}.{})".format(
+                    tomorrow.day, tomorrow.month, tomorrow.year - 2000))
+            ],
+            [KeyboardButton("Отмена")]
+        ], resize_keyboard=True)
+        
+    def get_NOTIFY_MENU_ADD_Time_pick_keyboard():
+        
+        # need to utc + 3
+        one_min = datetime.now() + timedelta(hours=3, minutes=1)
+        fifteen_min = datetime.now() + timedelta(hours=3, minutes=15)
+        one_hour = datetime.now() + timedelta(hours=3+1)
+        
+        return ReplyKeyboardMarkup([
+            [
+                KeyboardButton("Одна минута ({}.{})".format(
+                    one_min.hour, one_min.minute)),
+                
+                KeyboardButton("Пятнадцать минут ({}.{})".format(
+                    fifteen_min.hour, fifteen_min.minute)),
+                
+                KeyboardButton("Один час ({}.{})".format(
+                    one_hour.hour, one_hour.minute)),
+            ],
+            [KeyboardButton("Отмена")]
         ], resize_keyboard=True)
 
     NOTIFY_MENU_ADD_CANCEL_KEYBOARD = \
