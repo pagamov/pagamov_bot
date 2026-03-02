@@ -43,7 +43,7 @@ class Text:
 
     cancel_command_t0 = "Работа бота завершена"
 
-    MAIN_MENU_KEYBOARD: list[str] = ["Напоминания", "_Дела", "Привычки",
+    MAIN_MENU_KEYBOARD: list[str] = ["Напоминания", "_Дела", "Мои привычки",
                                      "Готовые программы", "Обо мне"]
 
     MAIN_MENU_t0 = "Система напоминаний"

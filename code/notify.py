@@ -15,6 +15,9 @@ async def NOTIFY_MENU(update: Update,
     tg_username: str = update.effective_user.username
 
     if text == Text.NOTIFY_MENU_KEYBOARD[0]:
+        """Получаем список моих напоминаний
+        Если он пустой, то пишем что пусто
+        """
         notify_list = Database().get_from_query(
             Text.NOTIFY_MENU_get_notify.format(tg_username))
 
@@ -34,6 +37,9 @@ async def NOTIFY_MENU(update: Update,
         return State.NOTIFY_MENU
 
     elif text == Text.NOTIFY_MENU_KEYBOARD[1]:
+        """Начинаем процедуру добавления напоминания - описание
+        потом дата потом время
+        """
         await update.message.reply_text(
             Text.NOTIFY_MENU_about_question,
             reply_markup=Keyboard.NOTIFY_MENU_ADD_CANCEL_KEYBOARD)
@@ -41,6 +47,8 @@ async def NOTIFY_MENU(update: Update,
         return State.NOTIFY_MENU_ADD_DESCRIPTION
 
     elif text == Text.NOTIFY_MENU_KEYBOARD[2]:
+        """Удаляем напоминание
+        """
 
         notify_list = Database().get_from_query(
             Text.NOTIFY_MENU_get_notify.format(tg_username))
@@ -50,21 +58,41 @@ async def NOTIFY_MENU(update: Update,
                 Text.NOTIFY_MENU_empty_list,
                 reply_markup=Keyboard.NOTIFY_MENU)
         else:
-            context.user_data["notify_list_pivot"] = 0
-            context.user_data["notify_list"] = notify_list
+            """TODO вывести список всех напоминаний и пользоватеть вводит номер напоминания в списке.
+            мы удаяем его из базы"""
+
+            reply: str = ''
+            for i, item in enumerate(notify_list):
+                reply += Text.NOTIFY_MENU_item_in_list.format(
+                    i, item[0], item[1], item[2])
+            await update.message.reply_text(
+                text=reply,
+                reply_markup=Keyboard.NOTIFY_MENU_ADD_CANCEL_KEYBOARD)
+
+            await update.message.reply_text(
+                text="Введите номер напоминания который надо удалить. Как только больше ничего удалять не нужно, нажмите кнопку отмены",
+                reply_markup=Keyboard.NOTIFY_MENU_ADD_CANCEL_KEYBOARD)
+            return STATE.NOTIFY_MENU_DELETE
+
 
         # await update.message.reply_text(
         #     '_Сейчас удалим напоминания', )
         # return State.NOTIFY_MENU
 
     elif text == Text.NOTIFY_MENU_KEYBOARD[3]:
+        # TODO зачем изменять напоминанеи если можно удалить и сделать новое
         await update.message.reply_text(
-            '_Давай изменим напоминание', )
-        return State.NOTIFY_MENU_CHANGE
+                text="Модуль изменения напоминаний пока что не работает",
+                reply_markup=Keyboard.NOTIFY_MENU)
+        return State.NOTIFY_MENU
 
     elif text == Text.NOTIFY_MENU_KEYBOARD[4]:
-        await update.message.reply_text('_Что там по настройкам?', )
+        # TODO рассмотреть какие настройки можно добавить в модуль
+        await update.message.reply_text(
+                text="Модуль настроек пока что не работает",
+                reply_markup=Keyboard.NOTIFY_MENU)
         return State.NOTIFY_MENU
+    
 
     elif text == Text.NOTIFY_MENU_KEYBOARD[5]:
         match User().is_admin(tg_username):
