@@ -1,4 +1,4 @@
-from telegram import Update, ReplyKeyboardRemove
+from telegram import Update
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
 
@@ -9,36 +9,17 @@ from telegram.ext import CallbackQueryHandler
 
 import json
 
-import functools
-from typing import Callable
-
 from habbit import *
 from const import *
 from database import *
 from notify import *
+from admin import *
+from about_me import *
 
 # TODO сделать изменение внутреннего аноним ника
 # TODO после смены ника, нужно в базе поменять ВСЕ логи где он участвует на него
 # TODO удалять через админскую консоль пользователей
 # TODO создавать через консоль юзеров
-
-
-# Wrapper section
-
-def log_chat_message(func: Callable) -> Callable:
-    @functools.wraps(func)
-    async def wrapper(update: Update,
-                      context: ContextTypes.DEFAULT_TYPE,
-                      *args, **kwargs) -> int:
-
-        chat_id = update.effective_chat.id if update.effective_chat else 'N/A'
-        message_id = update.message.message_id if update.message else 'N/A'
-        print(f"Chat ID: {chat_id}, Message ID: {message_id}")
-        return await func(update, context, *args, **kwargs)
-    return wrapper
-
-# Handler section
-
 
 async def start_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
     """Тут мы начинаем работу в режиме диалога. Возвращаем меню.
@@ -90,10 +71,12 @@ async def FROM_IDLE_MENU(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
     """
 
     tg_username: str = update.effective_user.username
+    FROM_IDLE_MENU_t0 : str = \
+        "Вернулись после падения сервера (не ваш косяк), о великий равный небу."
 
     if User().is_admin(tg_username):
         await update.message.reply_text(
-            text=Text.FROM_IDLE_MENU_t0,
+            text=FROM_IDLE_MENU_t0,
             reply_markup=Keyboard.MAIN_MENU_ADMIN)
 
         return State.MAIN_MENU_ADMIN
@@ -104,13 +87,11 @@ async def FROM_IDLE_MENU(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
 
         return State.MAIN_MENU
 
-
 async def cancel_command(update: Update,
                          context: ContextTypes.DEFAULT_TYPE) -> None:
 
     await context.bot.send_message(
-        chat_id=update.effective_chat.id, text=Text.cancel_command_t0)
-
+        chat_id=update.effective_chat.id, text="Работа бота завершена")
 
 async def MAIN_MENU(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
     text: str = update.message.text
@@ -147,49 +128,6 @@ async def MAIN_MENU(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
 
         return State.MAIN_MENU
 
-
-async def MAIN_MENU_ADMIN(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
-    text: str = update.message.text
-    tg_username: str = update.effective_user.username
-
-    if text == Text.MAIN_MENU_ADMIN_KEYBOARD[0]:
-        await update.message.reply_text(
-            Text.MAIN_MENU_ADMIN_t0, reply_markup=Keyboard.NOTIFY_MENU)
-
-        return State.NOTIFY_MENU
-
-    elif text == Text.MAIN_MENU_ADMIN_KEYBOARD[2]:
-        await update.message.reply_text(
-            Text.MAIN_MENU_ADMIN_t2, reply_markup=Keyboard.HABBIT_MENU)
-
-        return State.HABBIT_MENU
-
-    elif text == Text.MAIN_MENU_ADMIN_KEYBOARD[3]:
-        await update.message.reply_text(
-            Text.MAIN_MENU_ADMIN_t3, reply_markup=Keyboard.PROGRAMM_MENU)
-
-        return State.PROGRAMM_MENU
-
-    elif text == Text.MAIN_MENU_ADMIN_KEYBOARD[4]:
-        await update.message.reply_text(
-            Text.MAIN_MENU_ADMIN_t4, reply_markup=Keyboard.ABOUT_ME_MENU)
-
-        return State.ABOUT_ME_MENU
-
-    elif text == Text.MAIN_MENU_ADMIN_KEYBOARD[5]:
-        await update.message.reply_text(
-            Text.MAIN_MENU_ADMIN_t5, reply_markup=Keyboard.ADMIN_PANEL_1)
-
-        return State.ADMIN_PANEL_1
-
-    else:
-        if User().is_admin(tg_username):
-            return State.MAIN_MENU_ADMIN
-
-        else:
-            State.MAIN_MENU
-
-
 async def PROGRAMM_MENU(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
     text: str = update.message.text
     tg_username: str = update.effective_user.username
@@ -212,241 +150,8 @@ async def PROGRAMM_MENU(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
         case _:
             return State.PROGRAMM_MENU
 
-
-async def ABOUT_ME_MENU(update: Update,
-                        context: ContextTypes.DEFAULT_TYPE) -> int:
-
-    text: str = update.message.text
-    tg_username: str = update.effective_user.username
-
-    user = User()
-
-    if text == Text.ABOUT_ME_MENU_KEYBOARD[0]:
-        context.user_data["new_bot_username"] = user.createBot_username()
-        cur_username: str = user.get_bot_username(tg_username)
-
-        await update.message.reply_text(
-            Text.ABOUT_ME_MENU_CHANGE_NICK_t0.format(
-                cur_username, context.user_data["new_bot_username"]),
-            reply_markup=Keyboard.ABOUT_ME_CHANGE_NICK)
-
-        return State.ABOUT_ME_MENU_CHANGE_NICK
-
-    elif text == Text.ABOUT_ME_MENU_KEYBOARD[-1]:
-        match User().is_admin(tg_username):
-            case True:
-                await update.message.reply_text(
-                    Text.RETURN_TO_MENU_ADMIN,
-                    reply_markup=Keyboard.MAIN_MENU_ADMIN)
-
-                return State.MAIN_MENU_ADMIN
-            case _:
-                await update.message.reply_text(
-                    Text.RETURN_TO_MENU,
-                    reply_markup=Keyboard.MAIN_MENU)
-
-                return State.MAIN_MENU
-    else:
-        return State.ABOUT_ME_MENU
-
-
-async def ABOUT_ME_MENU_CHANGE_NICK(update: Update,
-                                    context: ContextTypes.DEFAULT_TYPE) -> int:
-
-    text: str = update.message.text
-    tg_username: str = update.effective_user.username
-
-    if text == Text.ABOUT_ME_MENU_CHANGE_NICK_t2:
-        context.user_data["new_bot_username"] = User().createBot_username()
-
-        await update.message.reply_text(
-            Text.ABOUT_ME_MENU_CHANGE_NICK_t1.format(
-                context.user_data["new_bot_username"]),
-            reply_markup=Keyboard.ABOUT_ME_CHANGE_NICK)
-
-        return State.ABOUT_ME_MENU_CHANGE_NICK
-
-    elif text == Text.ABOUT_ME_MENU_CHANGE_NICK_t4:
-        # Применить текущий ник к пользователю
-        Database().run_query(
-            Text.ABOUT_ME_MENU_CHANGE_NICK_t6.format(
-                context.user_data["new_bot_username"], tg_username))
-
-        await update.message.reply_text(
-            Text.ABOUT_ME_MENU_CHANGE_NICK_t5,
-            reply_markup=Keyboard.ABOUT_ME_MENU)
-
-        return State.ABOUT_ME_MENU
-
-    elif text == Text.ABOUT_ME_MENU_CHANGE_NICK_t3:
-        await update.message.reply_text(
-            Text.RETURN_TO_MENU, reply_markup=Keyboard.ABOUT_ME_MENU)
-        return State.ABOUT_ME_MENU
-
-    return State.ABOUT_ME_MENU_CHANGE_NICK
-
-
-async def ADMIN_PANEL_1(update: Update,
-                        context: ContextTypes.DEFAULT_TYPE) -> int:
-
-    text: str = update.message.text
-    tg_username: str = update.effective_user.username
-
-    if text == Text.ADMIN_PANEL_1_KEYBOARD[0]:
-        await update.message.reply_text(
-            Text.ADMIN_PANEL_1_t0,
-            reply_markup=ReplyKeyboardRemove())
-
-        return State.ADMIN_PANEL_TAIL_LOG_BOT
-
-    elif text == Text.ADMIN_PANEL_1_KEYBOARD[1]:
-        Database().run_query(
-            Text.ADMIN_PANEL_1_t1.format(
-                context._chat_id, tg_username, tg_username))
-
-        await update.message.reply_text(
-            Text.ADMIN_PANEL_1_t2, reply_markup=Keyboard.ADMIN_PANEL_1)
-
-    elif text == Text.ADMIN_PANEL_1_KEYBOARD[-2]:  # Назад
-        match User().is_admin(tg_username):
-            case True:
-                await update.message.reply_text(
-                    Text.RETURN_TO_MENU_ADMIN,
-                    reply_markup=Keyboard.MAIN_MENU_ADMIN)
-
-                return State.MAIN_MENU_ADMIN
-            case _:
-                await update.message.reply_text(
-                    Text.RETURN_TO_MENU,
-                    reply_markup=Keyboard.MAIN_MENU)
-
-                return State.MAIN_MENU
-
-    elif text == Text.ADMIN_PANEL_1_KEYBOARD[-1]:  # >
-        await update.message.reply_text(
-            'Админка 2', reply_markup=Keyboard.ADMIN_PANEL_2)
-        return State.ADMIN_PANEL_2
-
-    else:
-        return State.ADMIN_PANEL_1
-
-
-async def ADMIN_PANEL_TAIL_LOG_BOT(update: Update,
-                                   _: ContextTypes.DEFAULT_TYPE) -> int:
-    """Получить последние строчки таблицы log_bot
-    """
-
-    logger = Logger()
-    text: str = update.message.text
-
-    try:
-        int(text)
-    except ValueError:
-        await update.message.reply_text("Не похоже на число.. Давай еще раз...")
-        return State.ADMIN_PANEL_TAIL_LOG_BOT
-
-    if int(text) <= 0:
-        await update.message.reply_text("Мне бы число больше нуля...")
-        return State.ADMIN_PANEL_TAIL_LOG_BOT
-    else:
-        res: list[str] | str = logger.tail_log_bot(int(text))
-
-        if type(res) == str:
-            await update.message.reply_text(
-                res, reply_markup=Keyboard.ADMIN_PANEL_1)
-
-        else:
-            # Нам тут важно чтобы отчет не вылез за пределы размера сообщения.
-            # Если оно больше TELEGRAM_MAX_MESSAGE_SIZE
-            # то начинаем заполнять следующую ячейку.
-            # Потом пачкой все отправляем.
-
-            message_storage: list[str] = []
-            storage: str = ''
-            for row in res:
-                if len(storage) + len(row) > TELEGRAM_MAX_MESSAGE_SIZE:
-                    message_storage.append(storage)
-                    storage = ''
-
-                storage += row
-
-            message_storage.append(storage)
-
-            for message in message_storage:
-                await update.message.reply_text(
-                    message, reply_markup=Keyboard.ADMIN_PANEL_1)
-
-        return State.ADMIN_PANEL_1
-
-
-async def ADMIN_PANEL_2(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
-    text: str = update.message.text
-    tg_username: str = update.effective_user.username
-    match text:
-        case Text.ADMIN_PANEL_backward:
-            await update.message.reply_text(
-                Text.ADMIN_PANEL_2_t0, reply_markup=Keyboard.ADMIN_PANEL_1)
-
-            return State.ADMIN_PANEL_1
-
-        case Text.ADMIN_PANEL_forward:
-            await update.message.reply_text(
-                Text.ADMIN_PANEL_2_t1, reply_markup=Keyboard.ADMIN_PANEL_3)
-
-            return State.ADMIN_PANEL_3
-
-        case Text.ADMIN_PANEL_return:
-            match User().is_admin(tg_username):
-                case True:
-                    await update.message.reply_text(
-                        Text.RETURN_TO_MENU_ADMIN,
-                        reply_markup=Keyboard.MAIN_MENU_ADMIN)
-
-                    return State.MAIN_MENU_ADMIN
-
-                case _:
-                    await update.message.reply_text(
-                        Text.RETURN_TO_MENU, reply_markup=Keyboard.MAIN_MENU)
-
-                    return State.MAIN_MENU
-
-        case _:
-            return State.ADMIN_PANEL_2
-
-
-async def ADMIN_PANEL_3(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
-    text: str = update.message.text
-    tg_username: str = update.effective_user.username
-    match text:
-        case Text.ADMIN_PANEL_backward:
-            await update.message.reply_text(
-                Text.ADMIN_PANEL_3_t0, reply_markup=Keyboard.ADMIN_PANEL_2)
-
-            return State.ADMIN_PANEL_2
-
-        case Text.ADMIN_PANEL_return:
-
-            match User().is_admin(tg_username):
-                case True:
-                    await update.message.reply_text(
-                        Text.RETURN_TO_MENU_ADMIN,
-                        reply_markup=Keyboard.MAIN_MENU_ADMIN)
-
-                    return State.MAIN_MENU_ADMIN
-
-                case _:
-                    await update.message.reply_text(
-                        Text.RETURN_TO_MENU,
-                        reply_markup=Keyboard.MAIN_MENU)
-
-                    return State.MAIN_MENU
-        case _:
-            return State.ADMIN_PANEL_3
-
-
 async def handle_final(update: Update, _: ContextTypes.DEFAULT_TYPE):
     pass
-
 
 async def check_notify_queue(context: ContextTypes.DEFAULT_TYPE):
     notify_to_send = Database().get_from_query(f"""
@@ -480,7 +185,6 @@ async def check_notify_queue(context: ContextTypes.DEFAULT_TYPE):
                 SET sent=1
                 WHERE id_notify = {id}
             """)
-
 
 async def notify_queue_handler(update: Update, _):
     query = update.callback_query
@@ -517,7 +221,6 @@ async def notify_queue_handler(update: Update, _):
         """)
         await query.edit_message_text(text="Отложил на 1 мин.")
 
-
 async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
     import html
     import traceback
@@ -548,7 +251,6 @@ async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await context.bot.send_message(
         chat_id=321911494, text=message, parse_mode=ParseMode.HTML
     )
-
 
 def main():
     Database().firstInitDatabase()
@@ -615,8 +317,6 @@ def main():
 
     states[ConversationHandler.END] = \
         [MessageHandler(basic_filters, handle_final)]
-    
-
 
     for key, _ in states.items():
         states[key].append(CallbackQueryHandler(notify_queue_handler))
@@ -642,7 +342,6 @@ def main():
         app.run_polling(poll_interval=0.8, allowed_updates=Update.ALL_TYPES)
     except Exception as e:
         Logger().log(e, level='CRITICAL')
-
 
 if __name__ == '__main__':
     main()

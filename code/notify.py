@@ -9,7 +9,7 @@ from const import *
 
 
 async def NOTIFY_MENU(update: Update,
-                      context: ContextTypes.DEFAULT_TYPE) -> int:
+                      _: ContextTypes.DEFAULT_TYPE) -> int:
 
     text: str = update.message.text
     tg_username: str = update.effective_user.username

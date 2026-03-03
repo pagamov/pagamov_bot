@@ -54,8 +54,19 @@ class Database:
         return res
 
     def firstInitDatabase(self):
+
+        firstInitDatabase_message_to_delete: str = """
+        CREATE TABLE IF NOT EXISTS message_to_delete (
+            message_to_delete_id    INTEGER UNIQUE,
+            datetime_to_delete      TEXT NOT NULL,
+            chat_id                 TEXT NOT NULL,
+            message_id              TEXT NOT NULL,
+            deleted                 INTEGER DEFAULT 0,
+            PRIMARY KEY(message_to_delete_id)
+        );"""
+
         # Хочется чтобы чат был чистый, тут пишутся сообщения на удаление
-        self.run_query(Text.firstInitDatabase_message_to_delete)
+        self.run_query(firstInitDatabase_message_to_delete)
 
         # Нужна для работы class Logger(Database)
         self.run_query(Text.firstInitDatabase_bot_log)
@@ -66,20 +77,55 @@ class Database:
         # Тут указываются роли пользователей, данные заполняются при init
         self.run_query(Text.firstInitDatabase_role)
 
+        firstInitDatabase_notify: str = """
+        CREATE TABLE IF NOT EXISTS notify (
+            id_notify               INTEGER,
+            chat_id                 INTEGER NOT NULL,
+            user_id                 INTEGER NOT NULL,
+            description             TEXT NOT NULL,
+            time_create             TEXT NOT NULL,
+            time_notify             TEXT NOT NULL,
+            sent                    INTEGER DEFAULT 0,
+            done                    INTEGER DEFAULT 0,
+            PRIMARY KEY(id_notify),
+            FOREIGN KEY(user_id) REFERENCES user(id_user)
+        );"""
+
         # Таблица напоминаний
-        self.run_query(Text.firstInitDatabase_notify)
+        self.run_query(firstInitDatabase_notify)
+
+        firstInitDatabase_user_habbit: str = """
+        CREATE TABLE IF NOT EXISTS user_habbit (
+            id_user_habbit	INTEGER,
+            id_user	INTEGER NOT NULL,
+            description TEXT NOT NULL,
+            active INTEGER DEFAULT 1,
+            PRIMARY KEY(id_user_habbit),
+            FOREIGN KEY(id_user) REFERENCES user(id_user)
+        );"""
 
         # Таблица с привычками пользователей
-        self.run_query(Text.firstInitDatabase_user_habbit)
+        self.run_query(firstInitDatabase_user_habbit)
 
         # Более крутые таблицы
         # Тут указываются какие роли для каких пользователей заведены
         self.run_query(Text.firstInitDatabase_user_role)
 
         try:
+
+            firstInitDatabase_insert_role: str = """
+                INSERT INTO role
+                    (name_role, description_role)
+                VALUES 
+                    (?,?);"""
+            
+            firstInitDatabase_insert_role_arr: list = [
+                ("admin", "Имеет доступ ко всему контенту"),
+                ("user", "Начальная роль всех пользователей")]
+
             # Заполняем начальные значения для ролей в свежей базе
-            self.run_many_query(Text.firstInitDatabase_insert_role,
-                                Text.firstInitDatabase_insert_role_arr)
+            self.run_many_query(firstInitDatabase_insert_role,
+                                firstInitDatabase_insert_role_arr)
         except Exception as e:
             # Если видим ошибку, получается что такие значения есть.
             print(e)
@@ -135,16 +181,25 @@ class User:
     """
 
     def __init__(self):
-        self.default_user_role = Text.User_default_user_role
-        self.admin_user_role = Text.User_admin_user_role
-        self.admin_list = Text.User_admin_list
+        self.default_user_role = "user"
+        self.admin_user_role = "admin"
+        self.admin_list = ["pagamov"]
 
     def createBot_username(self) -> str:
-        """Делаем случайное имя для анонимного чата
-        """
-        pril = Text.createBot_username_t0
-        animals = Text.createBot_username_t1
-        dig = Text.createBot_username_t2
+
+        pril: list[str] = \
+        ["Удачливый", "Смелый", "Весёлый", "Храбрый", "Гениальный",
+         "Остроумный", "Талантливый", "Умный", "Забавный", "Быстрый",
+         "Честный", "Осторожный", "Решительный", "Проницательный",
+         "Верный", "Любимый", "Дерзкий", "Очаровательный", "Щедрый",
+         "Находчивый"]
+        
+        animals: list[str] = \
+        ['слон', 'тигр', 'медведь', 'лев', 'крокодил',
+         'голубь', 'жираф', 'верблюд', 'броненосец', 'кот']
+        
+        dig: list[str] = \
+        ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
 
         result = f"{random.choice(pril)}_" \
             + f"{random.choice(animals)}_" \
@@ -162,12 +217,18 @@ class User:
         """
         assert tg_username != '', Text.User_t1_err
 
-        Logger().log(Text.User_t0.format(tg_username))
+
+        User_t0 = "Создаем пользователя {}"
+
+        Logger().log(User_t0.format(tg_username))
         Database().run_query(
             Text.createUser_t0.format(tg_username, self.createBot_username()))
 
         # Ставим пользователю доступ по умолчанию
-        Logger().log(Text.User_t2.format(tg_username))
+
+        User_t2 = "Создаем пользователя {} - права по умолчанию"
+
+        Logger().log(User_t2.format(tg_username))
         Database().run_query(
             Text.createUser_t1.format(tg_username, self.default_user_role))
 

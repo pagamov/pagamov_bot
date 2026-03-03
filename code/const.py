@@ -36,12 +36,7 @@ class Text:
     start_command_t3 = "Добро пожаловать, о великий равный небу {}."
     start_command_t3 += " Ваши покои вас ждут."
 
-    FROM_IDLE_MENU_t0 = "Вернулись после падения сервера (не ваш косяк),"
-    FROM_IDLE_MENU_t0 += " о великий равный небу."
-
     FROM_IDLE_MENU_t1 = "Вернулись после падения сервера"
-
-    cancel_command_t0 = "Работа бота завершена"
 
     MAIN_MENU_KEYBOARD: list[str] = ["Напоминания", "_Дела", "Мои привычки",
                                      "Готовые программы", "Обо мне"]
@@ -89,40 +84,10 @@ class Text:
 
     error_t0: str = """Update:\n\n{}\n\nCaused error:\n\n{}"""
 
-    createBot_username_t0: list[str] = \
-        ["Удачливый", "Смелый", "Весёлый", "Храбрый", "Гениальный",
-         "Остроумный", "Талантливый", "Умный", "Забавный", "Быстрый",
-         "Честный", "Осторожный", "Решительный", "Проницательный",
-         "Верный", "Любимый", "Дерзкий", "Очаровательный", "Щедрый",
-         "Находчивый"]
+    RETURN_TO_MENU_ADMIN = "Давай в основное меню, великий господин равный небу"
+    RETURN_TO_MENU = "Давай в основное меню"
 
-    createBot_username_t1: list[str] = \
-        ['слон', 'тигр', 'медведь', 'лев', 'крокодил',
-         'голубь', 'жираф', 'верблюд', 'броненосец', 'кот']
-
-    createBot_username_t2: list[str] = \
-        ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
-
-    ABOUT_ME_MENU_CHANGE_NICK_t0 = "А что вам не нравится в {}?\n"
-    ABOUT_ME_MENU_CHANGE_NICK_t0 += "Сгенерируем вам новый ник...\nКак вам {}?"
-
-    ABOUT_ME_MENU_CHANGE_NICK_t1 = 'А как вам {}?'
-    ABOUT_ME_MENU_CHANGE_NICK_t2 = "Попробуем еще раз"
-    ABOUT_ME_MENU_CHANGE_NICK_t3 = "Оставить все как было"
-    ABOUT_ME_MENU_CHANGE_NICK_t4 = "Мне нравится"
-    ABOUT_ME_MENU_CHANGE_NICK_t5 = "Изменения сохранены"
-    ABOUT_ME_MENU_CHANGE_NICK_t6 = '''
-        update 
-            user
-        set 
-            bot_username="{}"
-        where 
-            tg_username="{}";'''
-
-    RETURN_TO_MENU_ADMIN = 'Давай в основное меню, великий господин равный небу'
-    RETURN_TO_MENU = 'Давай в основное меню'
-
-    ADMIN_PANEL_1_t0 = 'Сколько последних записей выдать?'
+    ADMIN_PANEL_1_t0 = "Сколько последних записей выдать?"
 
     ADMIN_PANEL_1_t1 = """
         INSERT INTO notify 
@@ -208,16 +173,6 @@ class Text:
         ORDER BY
             bot_log_id ASC;"""
 
-    firstInitDatabase_message_to_delete: str = """
-        CREATE TABLE IF NOT EXISTS message_to_delete (
-            message_to_delete_id    INTEGER UNIQUE,
-            datetime_to_delete      TEXT NOT NULL,
-            chat_id                 TEXT NOT NULL,
-            message_id              TEXT NOT NULL,
-            deleted                 INTEGER DEFAULT 0,
-            PRIMARY KEY(message_to_delete_id)
-        );"""
-
     firstInitDatabase_bot_log: str = """
         CREATE TABLE IF NOT EXISTS bot_log (
             bot_log_id      INTEGER UNIQUE,
@@ -243,20 +198,6 @@ class Text:
             PRIMARY KEY(id_role)
         );"""
 
-    firstInitDatabase_notify: str = """
-        CREATE TABLE IF NOT EXISTS notify (
-            id_notify               INTEGER,
-            chat_id                 INTEGER NOT NULL,
-            user_id                 INTEGER NOT NULL,
-            description             TEXT NOT NULL,
-            time_create             TEXT NOT NULL,
-            time_notify             TEXT NOT NULL,
-            sent                    INTEGER DEFAULT 0,
-            done                    INTEGER DEFAULT 0,
-            PRIMARY KEY(id_notify),
-            FOREIGN KEY(user_id) REFERENCES user(id_user)
-        );"""
-
     firstInitDatabase_user_role: str = """
         CREATE TABLE IF NOT EXISTS user_role (
             id_user_role	INTEGER,
@@ -267,34 +208,18 @@ class Text:
             FOREIGN KEY(user) REFERENCES user(id_user)
         );"""
     
-    firstInitDatabase_insert_role: str = """
-        INSERT INTO role
-            (name_role, description_role)
-        VALUES 
-            (?,?);"""
-
-    firstInitDatabase_insert_role_arr: list = [
-        ("admin", "Имеет доступ ко всему контенту"),
-        ("user", "Начальная роль всех пользователей")]
-
     log_insert_query: str = """
             INSERT INTO bot_log
                 (datetime, text)
             VALUES
                 (datetime(), "{}");"""
-
-    User_default_user_role = "user"
-    User_admin_user_role = "admin"
-    User_admin_list = ["pagamov"]
-
-    User_t0 = "Создаем пользователя {}"
+    
     User_t1_err = "tg_username is empty"
-    User_t2 = "Создаем пользователя {} - права по умолчанию"
+    
     User_t3 = "Создаем пользователя {} - админские штучки"
     User_t4 = "Ищем пользователя с ником {}"
     User_t5 = "Проверяем пользователя с ником {} является ли он админом"
     User_t6 = "Ищем внутренний никнейм у пользователя с ником {}"
-    
     
     NOTIFY_MENU_get_notify = """
         SELECT
@@ -304,7 +229,7 @@ class Text:
         WHERE
             user_id = (SELECT id_user FROM user
                         WHERE tg_username = "{}" limit 1)
-            AND done = 0
+            AND done = 0;
     """
     
     NOTIFY_MENU_empty_list = "Список твоих напоминаний пуст"
@@ -319,25 +244,13 @@ class Text:
             (SELECT id_user FROM user 
                 WHERE tg_username = "{}" limit 1),
             "{}", 
-            DATETIME('NOW'), DATETIME('{} {}:00'))
+            DATETIME('NOW'), DATETIME('{} {}:00'));
     """
     
     NOTIFY_MENU_time_err = "Что то не так с вашими данными, \
                 вы ввели время раньше чем времени сейчас, еще раз"
     
     NOTIFY_MENU_exit_add_succ = "Напоминание добавлено"
-
-
-    firstInitDatabase_user_habbit: str = """
-        CREATE TABLE IF NOT EXISTS user_habbit (
-            id_user_habbit	INTEGER,
-            id_user	INTEGER NOT NULL,
-            description TEXT NOT NULL,
-            active INTEGER DEFAULT 1,
-            PRIMARY KEY(id_user_habbit),
-            FOREIGN KEY(id_user) REFERENCES user(id_user)
-        );"""
-    
 
 
 class Keyboard:
