@@ -8,3 +8,4 @@ bin/
 lib64
 pyvenv.cfg
 .DS_Store
+.~lock.*
