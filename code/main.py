@@ -12,6 +12,7 @@ import json
 import functools
 from typing import Callable
 
+from habbit import *
 from const import *
 from database import *
 from notify import *
@@ -189,27 +190,6 @@ async def MAIN_MENU_ADMIN(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
             State.MAIN_MENU
 
 
-async def HABBIT_MENU(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
-    text: str = update.message.text
-    tg_username: str = update.effective_user.username
-    match text:
-
-        case "Назад":
-            match User().is_admin(tg_username):
-                case True:
-                    await update.message.reply_text(
-                        Text.RETURN_TO_MENU_ADMIN,
-                        reply_markup=Keyboard.MAIN_MENU_ADMIN)
-
-                    return State.MAIN_MENU_ADMIN
-                case _:
-                    await update.message.reply_text(
-                        Text.RETURN_TO_MENU,
-                        reply_markup=Keyboard.MAIN_MENU)
-
-                    return State.MAIN_MENU
-        case _:
-            return State.HABBIT_MENU
 
 
 async def PROGRAMM_MENU(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
@@ -607,6 +587,9 @@ def main():
 
     states[State.NOTIFY_MENU_ADD_TIMEPICK] = \
         [MessageHandler(basic_filters, NOTIFY_MENU_ADD_TIMEPICK)]
+    
+    states[State.NOTIFY_MENU_DELETE] = \
+        [MessageHandler(basic_filters, NOTIFY_DELETE)]
 
     states[State.HABBIT_MENU] = \
         [MessageHandler(basic_filters, HABBIT_MENU)]
@@ -634,6 +617,8 @@ def main():
 
     states[ConversationHandler.END] = \
         [MessageHandler(basic_filters, handle_final)]
+    
+
 
     for key, _ in states.items():
         states[key].append(CallbackQueryHandler(notify_queue_handler))

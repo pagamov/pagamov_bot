@@ -469,6 +469,12 @@ class Keyboard:
         ReplyKeyboardMarkup([
             [KeyboardButton("Отмена")]
         ], resize_keyboard=True)
+    
+
+    NOTIFY_MENU_DELETE_CANCEL_KEYBOARD = \
+        ReplyKeyboardMarkup([
+            [KeyboardButton("Отмена")]
+        ], resize_keyboard=True)
 
 
 class State(Enum):

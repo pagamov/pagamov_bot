@@ -65,19 +65,16 @@ async def NOTIFY_MENU(update: Update,
             for i, item in enumerate(notify_list):
                 reply += Text.NOTIFY_MENU_item_in_list.format(
                     i, item[0], item[1], item[2])
-            await update.message.reply_text(
-                text=reply,
-                reply_markup=Keyboard.NOTIFY_MENU_ADD_CANCEL_KEYBOARD)
-
+                
             await update.message.reply_text(
                 text="Введите номер напоминания который надо удалить. Как только больше ничего удалять не нужно, нажмите кнопку отмены",
-                reply_markup=Keyboard.NOTIFY_MENU_ADD_CANCEL_KEYBOARD)
-            return STATE.NOTIFY_MENU_DELETE
+                reply_markup=Keyboard.NOTIFY_MENU_DELETE_CANCEL_KEYBOARD)
+            
+            await update.message.reply_text(
+                text=reply,
+                reply_markup=Keyboard.NOTIFY_MENU_DELETE_CANCEL_KEYBOARD)
 
-
-        # await update.message.reply_text(
-        #     '_Сейчас удалим напоминания', )
-        # return State.NOTIFY_MENU
+            return State.NOTIFY_MENU_DELETE
 
     elif text == Text.NOTIFY_MENU_KEYBOARD[3]:
         # TODO зачем изменять напоминанеи если можно удалить и сделать новое
@@ -245,9 +242,48 @@ async def NOTIFY_MENU_ADD_TIMEPICK(update: Update,
 # async def NOTIFY_ADD():
 #     pass
 
-async def NOTIFY_DELETE():
-    pass
+async def NOTIFY_DELETE(update: Update,
+                        context: ContextTypes.DEFAULT_TYPE) -> int:
+    
+    text: str = update.message.text
+    tg_username: str = update.effective_user.username
+    dig: list[int] = list(map(int, re.findall(r'\d+', text)))
 
+    if text == "Отмена":
+        # возврат к меню нотификаций
+        await update.message.reply_text(
+            text="Назад к твоим напоминаниям",
+            reply_markup=Keyboard.NOTIFY_MENU)
+        return State.NOTIFY_MENU
+
+    else:
+
+        user_dig = dig[0]
+
+        notify_list = Database().get_from_query(
+            Text.NOTIFY_MENU_get_notify.format(tg_username))
+        
+        # проверка что мы в интервале напоминаний
+        if user_dig < 0 or user_dig >= len(notify_list):
+            await update.message.reply_text(
+                text="Неправильный номер напоминания, введи снова",
+                reply_markup=Keyboard.NOTIFY_MENU_DELETE_CANCEL_KEYBOARD)
+            return State.NOTIFY_MENU_DELETE
+
+        
+        id_to_delete: int = notify_list[user_dig][0] # id_notify
+
+        Database().run_query(f"""
+            DELETE FROM notify
+                             WHERE id_notify = {id_to_delete}
+        """)
+
+        await update.message.reply_text(
+                    text="Напоминание удалено",
+                    reply_markup=Keyboard.NOTIFY_MENU_DELETE_CANCEL_KEYBOARD)
+
+    # удалем пока есть что удалять или не нажмут "назад"
+    return State.NOTIFY_MENU_DELETE
 
 async def NOTIFY_CHANGE():
     pass
