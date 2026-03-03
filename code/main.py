@@ -190,8 +190,6 @@ async def MAIN_MENU_ADMIN(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
             State.MAIN_MENU
 
 
-
-
 async def PROGRAMM_MENU(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
     text: str = update.message.text
     tg_username: str = update.effective_user.username
