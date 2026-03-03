@@ -52,6 +52,17 @@ class Database:
         cur.close()
         con.close()
         return res
+    
+    def run_query_with_return(self, query: str, params: tuple = ()) -> int:
+        """Выполнить запрос и вернуть ID последней вставленной записи"""
+        con = sqlite3.connect(self.path)
+        cur = con.cursor()
+        cur.execute(query, params)
+        last_id = cur.lastrowid
+        con.commit()
+        cur.close()
+        con.close()
+        return last_id
 
     def firstInitDatabase(self):
 
@@ -111,8 +122,38 @@ class Database:
         # Тут указываются какие роли для каких пользователей заведены
         self.run_query(Text.firstInitDatabase_user_role)
 
-        try:
+        # В метод firstInitDatabase класса Database
+        firstInitDatabase_habit: str = """
+        CREATE TABLE IF NOT EXISTS habit (
+            id_habit            INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id             INTEGER NOT NULL,
+            description         TEXT NOT NULL,
+            frequency_type      TEXT NOT NULL, -- daily, weekly, custom
+            frequency_value     TEXT,          -- для custom: "1,3,5"
+            time_of_day         TEXT NOT NULL, -- время напоминания HH:MM
+            start_date          TEXT NOT NULL, -- дата начала
+            end_date            TEXT,          -- дата окончания (опционально)
+            is_active           INTEGER DEFAULT 1,
+            created_at          TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES user(id_user)
+        );"""
 
+        firstInitDatabase_habit_progress: str = """
+        CREATE TABLE IF NOT EXISTS habit_progress (
+            id_progress         INTEGER PRIMARY KEY AUTOINCREMENT,
+            habit_id            INTEGER NOT NULL,
+            date                TEXT NOT NULL,
+            status              TEXT NOT NULL, -- completed, missed, skipped
+            notes               TEXT,
+            created_at          TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(habit_id) REFERENCES habit(id_habit)
+        );"""
+
+        # Добавляем в firstInitDatabase
+        self.run_query(firstInitDatabase_habit)
+        self.run_query(firstInitDatabase_habit_progress)
+
+        try:
             firstInitDatabase_insert_role: str = """
                 INSERT INTO role
                     (name_role, description_role)
@@ -129,6 +170,119 @@ class Database:
         except Exception as e:
             # Если видим ошибку, получается что такие значения есть.
             print(e)
+
+
+class HabitService:
+    def __init__(self):
+        self.database = Database()
+    
+    def create_habit(self, user_id: int, description: str, frequency_type: str,
+                     time_of_day: str, start_date: str, end_date: str = None,
+                     frequency_value: str = None) -> int:
+        """Создание новой привычки"""
+        query = """
+        INSERT INTO habit 
+            (user_id, description, frequency_type, frequency_value, 
+             time_of_day, start_date, end_date, is_active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+        """
+        
+        habit_id = self.database.run_query_with_return(
+            query, (user_id, description, frequency_type, frequency_value,
+                   time_of_day, start_date, end_date)
+        )
+        return habit_id
+    
+    def get_user_habits(self, user_id: int) -> list:
+        """Получение всех активных привычек пользователя"""
+        query = """
+        SELECT id_habit, description, frequency_type, frequency_value,
+               time_of_day, start_date, end_date, created_at
+        FROM habit
+        WHERE user_id = ? AND is_active = 1
+        ORDER BY created_at DESC
+        """
+        return self.database.get_from_query(query, (user_id,))
+    
+    def get_habit_by_id(self, habit_id: int) -> dict:
+        """Получение привычки по ID"""
+        query = """
+        SELECT id_habit, description, frequency_type, frequency_value,
+               time_of_day, start_date, end_date, is_active, created_at
+        FROM habit
+        WHERE id_habit = ?
+        """
+        result = self.database.get_from_query(query, (habit_id,))
+        return result[0] if result else None
+    
+    def update_habit(self, habit_id: int, **kwargs) -> None:
+        """Обновление привычки"""
+        allowed_fields = ['description', 'frequency_type', 'frequency_value',
+                         'time_of_day', 'start_date', 'end_date', 'is_active']
+        
+        updates = []
+        values = []
+        for field, value in kwargs.items():
+            if field in allowed_fields:
+                updates.append(f"{field} = ?")
+                values.append(value)
+        
+        if updates:
+            query = f"UPDATE habit SET {', '.join(updates)} WHERE id_habit = ?"
+            values.append(habit_id)
+            self.database.run_query_with_params(query, tuple(values))
+    
+    def delete_habit(self, habit_id: int) -> None:
+        """Удаление привычки (мягкое удаление)"""
+        query = "UPDATE habit SET is_active = 0 WHERE id_habit = ?"
+        self.database.run_query_with_params(query, (habit_id,))
+    
+    def mark_habit_completed(self, habit_id: int, 
+                             date: str, notes: str = None) -> None:
+        """Отметить выполнение привычки"""
+        query = """
+        INSERT INTO habit_progress (habit_id, date, status, notes)
+        VALUES (?, ?, 'completed', ?)
+        """
+        self.database.run_query_with_params(query, (habit_id, date, notes))
+    
+    def get_habit_schedule_for_period(self, habit_id: int, 
+                                      start_date: str, end_date: str) -> list:
+        """Получение расписания привычки на период"""
+        habit = self.get_habit_by_id(habit_id)
+        if not habit:
+            return []
+        
+        scheduled_dates = []
+        current_date = datetime.strptime(start_date, '%Y-%m-%d')
+        end_datetime = datetime.strptime(end_date, '%Y-%m-%d')
+        
+        while current_date <= end_datetime:
+            if self._should_notify_on_date(habit, current_date):
+                scheduled_dates.append({
+                    'date': current_date.strftime('%Y-%m-%d'),
+                    'time': habit['time_of_day'],
+                    'description': habit['description']
+                })
+            current_date += timedelta(days=1)
+        
+        return scheduled_dates
+    
+    def _should_notify_on_date(self, habit: dict, date: datetime) -> bool:
+        """Проверка, нужно ли отправля уведомление в конкретную дату"""
+        if habit['frequency_type'] == 'daily':
+            return True
+        elif habit['frequency_type'] == 'weekly':
+            # Например, если frequency_value = "1,3,5" 
+            # (понедельник, среда, пятница)
+            weekday = str(date.weekday())  # 0 = понедельник
+            return weekday in (habit['frequency_value'] or '').split(',')
+        elif habit['frequency_type'] == 'custom':
+            # Пользовательские дни
+            return str(date.weekday()) in \
+                (habit['frequency_value'] or '').split(',')
+        
+        return False
 
 
 class Logger:

@@ -180,12 +180,6 @@ async def ADMIN_PANEL_2(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
         case _:
             return State.ADMIN_PANEL_2
 
-
-
-
-
-
-
 async def ADMIN_PANEL_3(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
     text: str = update.message.text
     tg_username: str = update.effective_user.username

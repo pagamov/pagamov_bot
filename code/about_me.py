@@ -2,14 +2,13 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 
+from utils import get_user_info
 from database import *
 
 async def ABOUT_ME_MENU(update: Update,
                         context: ContextTypes.DEFAULT_TYPE) -> int:
 
-    text: str = update.message.text
-    tg_username: str = update.effective_user.username
-
+    text, tg_username = get_user_info()
     user = User()
 
     if text == Text.ABOUT_ME_MENU_KEYBOARD[0]:
@@ -47,8 +46,7 @@ async def ABOUT_ME_MENU(update: Update,
 async def ABOUT_ME_MENU_CHANGE_NICK(update: Update,
                                     context: ContextTypes.DEFAULT_TYPE) -> int:
 
-    text: str = update.message.text
-    tg_username: str = update.effective_user.username
+    text, tg_username = get_user_info()
 
     if text == "Попробуем еще раз":
 

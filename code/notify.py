@@ -58,7 +58,8 @@ async def NOTIFY_MENU(update: Update,
                 Text.NOTIFY_MENU_empty_list,
                 reply_markup=Keyboard.NOTIFY_MENU)
         else:
-            """TODO вывести список всех напоминаний и пользоватеть вводит номер напоминания в списке.
+            """TODO вывести список всех напоминаний и пользоватеть вводит 
+            номер напоминания в списке.
             мы удаяем его из базы"""
 
             reply: str = ''
@@ -67,7 +68,9 @@ async def NOTIFY_MENU(update: Update,
                     i, item[0], item[1], item[2])
                 
             await update.message.reply_text(
-                text="Введите номер напоминания который надо удалить. Как только больше ничего удалять не нужно, нажмите кнопку отмены",
+                text="Введите номер напоминания который надо удалить. " \
+                "Как только больше ничего удалять не нужно, нажмите кнопку " \
+                "отмены",
                 reply_markup=Keyboard.NOTIFY_MENU_DELETE_CANCEL_KEYBOARD)
             
             await update.message.reply_text(
@@ -77,7 +80,7 @@ async def NOTIFY_MENU(update: Update,
             return State.NOTIFY_MENU_DELETE
 
     elif text == Text.NOTIFY_MENU_KEYBOARD[3]:
-        # TODO зачем изменять напоминанеи если можно удалить и сделать новое
+        # TODO зачем изменять напоминание если можно удалить и сделать новое
         await update.message.reply_text(
                 text="Модуль изменения напоминаний пока что не работает",
                 reply_markup=Keyboard.NOTIFY_MENU)

@@ -8,7 +8,11 @@ from telegram.ext import filters, ApplicationBuilder
 from telegram.ext import CallbackQueryHandler
 
 import json
+import html
+import traceback
 
+from habit_handler import HabitHandler
+from utils import get_user_info
 from habbit import *
 from const import *
 from database import *
@@ -21,12 +25,83 @@ from about_me import *
 # TODO удалять через админскую консоль пользователей
 # TODO создавать через консоль юзеров
 
+async def check_habit_notifications(context: ContextTypes.DEFAULT_TYPE):
+    """Проверка и отправка уведомлений о привычках"""
+    from database import HabitService
+    from database import Database
+    import json
+    
+    habit_service = HabitService()
+    database = Database()
+    
+    # Получаем все активные привычки
+    habits = database.get_from_query("""
+        SELECT h.id_habit, h.description, h.time_of_day, h.user_id, u.tg_username
+        FROM habit h
+        JOIN user u ON h.user_id = u.id_user
+        WHERE h.is_active = 1
+    """)
+    
+    from datetime import datetime
+    today = datetime.now().strftime('%Y-%m-%d')
+    current_time = datetime.now().strftime('%H:%M')
+    
+    for habit in habits:
+        habit_id, description, time_of_day, user_id, tg_username = habit
+        
+        # Проверяем, нужно ли отправлять уведомление сегодня
+        schedule = habit_service.get_habit_schedule_for_period(
+            habit_id, today, today
+        )
+        
+        if schedule and time_of_day <= current_time:
+            # Проверяем, не отправляли ли уже сегодня
+            already_sent = database.get_from_query("""
+                SELECT id_progress FROM habit_progress 
+                WHERE habit_id = ? AND date = ? AND status = 'notified'
+            """, (habit_id, today))
+            
+            if not already_sent:
+                # Отправляем уведомление
+                from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+                
+                chat_id = database.get_from_query(
+                    "SELECT chat_id FROM notify WHERE user_id = ? LIMIT 1", 
+                    (user_id,)
+                )
+                
+                if chat_id:
+                    chat_id = chat_id[0][0]
+                    
+                    await context.bot.send_message(
+                        chat_id=chat_id,
+                        text=f"🎯 Напоминание о привычке:\n{description}",
+                        reply_markup=InlineKeyboardMarkup([
+                            [InlineKeyboardButton("Выполнено", 
+                                callback_data=json.dumps({
+                                    "type": "habit_completed", 
+                                    "habit_id": habit_id
+                                })),
+                             InlineKeyboardButton("Пропустить", 
+                                callback_data=json.dumps({
+                                    "type": "habit_skipped", 
+                                    "habit_id": habit_id
+                                }))]
+                        ])
+                    )
+                    
+                    # Отмечаем, что уведомление отправлено
+                    database.run_query_with_params("""
+                        INSERT INTO habit_progress (habit_id, date, status)
+                        VALUES (?, ?, 'notified')
+                    """, (habit_id, today))
+
 async def start_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
     """Тут мы начинаем работу в режиме диалога. Возвращаем меню.
     """
 
-    text: str = update.message.text
-    tg_username: str = update.effective_user.username
+    text, tg_username = get_user_info(update)
+
     user: User = User()
     bot_username: str = user.get_bot_username(tg_username)
 
@@ -70,7 +145,8 @@ async def FROM_IDLE_MENU(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
     добавлен такой entry_points
     """
 
-    tg_username: str = update.effective_user.username
+    _, tg_username = get_user_info(update)
+
     FROM_IDLE_MENU_t0 : str = \
         "Вернулись после падения сервера (не ваш косяк), о великий равный небу."
 
@@ -94,43 +170,37 @@ async def cancel_command(update: Update,
         chat_id=update.effective_chat.id, text="Работа бота завершена")
 
 async def MAIN_MENU(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
-    text: str = update.message.text
-    tg_username: str = update.effective_user.username
+    text, tg_username = get_user_info(update)
 
     if text == Text.MAIN_MENU_KEYBOARD[0]:
         await update.message.reply_text(
             Text.MAIN_MENU_t0,
             reply_markup=Keyboard.NOTIFY_MENU)
-
         return State.NOTIFY_MENU
 
     elif text == Text.MAIN_MENU_KEYBOARD[2]:
         await update.message.reply_text(
             Text.MAIN_MENU_t2, reply_markup=Keyboard.HABBIT_MENU)
-
         return State.HABBIT_MENU
 
     elif text == Text.MAIN_MENU_KEYBOARD[3]:
         await update.message.reply_text(
             Text.MAIN_MENU_t3, reply_markup=Keyboard.PROGRAMM_MENU)
-
         return State.PROGRAMM_MENU
 
     elif text == Text.MAIN_MENU_KEYBOARD[4]:
         await update.message.reply_text(
             Text.MAIN_MENU_t4, reply_markup=Keyboard.ABOUT_ME_MENU)
-
         return State.ABOUT_ME_MENU
 
     else:
         if User().is_admin(tg_username):
             return State.MAIN_MENU_ADMIN
-
         return State.MAIN_MENU
 
 async def PROGRAMM_MENU(update: Update, _: ContextTypes.DEFAULT_TYPE) -> int:
-    text: str = update.message.text
-    tg_username: str = update.effective_user.username
+    text, tg_username = get_user_info(update)
+
     match text:
 
         case "Назад":
@@ -160,31 +230,33 @@ async def check_notify_queue(context: ContextTypes.DEFAULT_TYPE):
             WHERE sent = 0 and time_notify <= DATETIME('now', '+3 hours')
     """)
 
-    if len(notify_to_send) != 0:
-        for notify in notify_to_send:
-            id = notify[0]
-            chat_id = notify[1]
-            text = notify[2]
+    if len(notify_to_send) == 0:
+        return
 
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text=text,
-                reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("Выполнил",
-                                          callback_data=json.dumps(
-                                              {"text": f"notify_set_done",
-                                               "id": id})),
-                     InlineKeyboardButton("Отложить",
-                                          callback_data=json.dumps(
-                                              {"text": f"notify_delay",
-                                               "id": id}))
-                     ]]))
+    for notify in notify_to_send:
+        id = notify[0]
+        chat_id = notify[1]
+        text = notify[2]
 
-            Database().run_query(f"""
-                UPDATE notify
-                SET sent=1
-                WHERE id_notify = {id}
-            """)
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=text,
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("Выполнил",
+                                        callback_data=json.dumps(
+                                            {"text": f"notify_set_done",
+                                            "id": id})),
+                    InlineKeyboardButton("Отложить",
+                                        callback_data=json.dumps(
+                                            {"text": f"notify_delay",
+                                            "id": id}))
+                    ]]))
+
+        Database().run_query(f"""
+            UPDATE notify
+            SET sent=1
+            WHERE id_notify = {id}
+        """)
 
 async def notify_queue_handler(update: Update, _):
     query = update.callback_query
@@ -222,15 +294,6 @@ async def notify_queue_handler(update: Update, _):
         await query.edit_message_text(text="Отложил на 1 мин.")
 
 async def error(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    import html
-    import traceback
-    # print(Text.error_t0.format(update, context.error))
-    # await context.bot.send_message(chat_id=321911494,
-    #        text=f"Bot Error:\n<code>{html.escape(str(context.error))}</code>",
-    #        parse_mode='HTML')
-
-    # print("Exception while handling an update: ", exc_info=context.error)
-
     tb_list = traceback.format_exception(None, context.error,
                                          context.error.__traceback__)
     tb_string = "".join(tb_list)
@@ -292,7 +355,8 @@ def main():
         [MessageHandler(basic_filters, NOTIFY_DELETE)]
 
     states[State.HABBIT_MENU] = \
-        [MessageHandler(basic_filters, HABBIT_MENU)]
+        [MessageHandler(basic_filters, 
+                        lambda u, c: HabitHandler().menu(u, c))]
 
     states[State.PROGRAMM_MENU] = \
         [MessageHandler(basic_filters, PROGRAMM_MENU)]
@@ -317,6 +381,26 @@ def main():
 
     states[ConversationHandler.END] = \
         [MessageHandler(basic_filters, handle_final)]
+    
+    states[State.HABBIT_MENU_ADD_DESCRIPTION] = \
+        [MessageHandler(filters.TEXT & (~filters.COMMAND), 
+                   lambda u, c: HabitHandler().add_description(u, c))]
+
+    states[State.HABBIT_MENU_ADD_FREQUENCY] = \
+        [MessageHandler(filters.TEXT & (~filters.COMMAND), 
+                   lambda u, c: HabitHandler().add_frequency(u, c))]
+
+    states[State.HABBIT_MENU_ADD_WEEKDAYS] = \
+        [MessageHandler(filters.TEXT & (~filters.COMMAND), 
+                   lambda u, c: HabitHandler().add_weekdays(u, c))]
+
+    states[State.HABBIT_MENU_ADD_TIME] = \
+        [MessageHandler(filters.TEXT & (~filters.COMMAND), 
+                   lambda u, c: HabitHandler().add_time(u, c))]
+
+    states[State.HABBIT_MENU_DELETE] = \
+        [MessageHandler(filters.TEXT & (~filters.COMMAND), 
+                   lambda u, c: HabitHandler().delete_habit(u, c))]
 
     for key, _ in states.items():
         states[key].append(CallbackQueryHandler(notify_queue_handler))
@@ -332,8 +416,16 @@ def main():
 
     # Добавление ассинхронного job который будет
     # отправлять напоминания и сообщения из очереди
-    check_notify_queue_job = app.job_queue.run_repeating(check_notify_queue,
-                                                         interval=5, first=1)
+    check_notify_queue_job = app.job_queue.run_repeating(
+        check_notify_queue,
+        interval=30, 
+        first=1)
+    
+    check_habit_job = app.job_queue.run_repeating(
+        check_habit_notifications, 
+        interval=60,  # Проверяем каждую минуту
+        first=1
+    )
 
     app.add_error_handler(error)
 
