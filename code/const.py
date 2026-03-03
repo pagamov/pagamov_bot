@@ -206,8 +206,7 @@ class Text:
             datetime, text 
         from tmp
         ORDER BY
-            bot_log_id ASC;
-    """
+            bot_log_id ASC;"""
 
     firstInitDatabase_message_to_delete: str = """
         CREATE TABLE IF NOT EXISTS message_to_delete (
@@ -217,8 +216,7 @@ class Text:
             message_id              TEXT NOT NULL,
             deleted                 INTEGER DEFAULT 0,
             PRIMARY KEY(message_to_delete_id)
-        );
-    """
+        );"""
 
     firstInitDatabase_bot_log: str = """
         CREATE TABLE IF NOT EXISTS bot_log (
@@ -268,7 +266,7 @@ class Text:
             FOREIGN KEY(role) REFERENCES role(id_role),
             FOREIGN KEY(user) REFERENCES user(id_user)
         );"""
-
+    
     firstInitDatabase_insert_role: str = """
         INSERT INTO role
             (name_role, description_role)
@@ -327,8 +325,18 @@ class Text:
     NOTIFY_MENU_time_err = "Что то не так с вашими данными, \
                 вы ввели время раньше чем времени сейчас, еще раз"
     
-    
     NOTIFY_MENU_exit_add_succ = "Напоминание добавлено"
+
+
+    firstInitDatabase_user_habbit: str = """
+        CREATE TABLE IF NOT EXISTS user_habbit (
+            id_user_habbit	INTEGER,
+            id_user	INTEGER NOT NULL,
+            description TEXT NOT NULL,
+            active INTEGER DEFAULT 1,
+            PRIMARY KEY(id_user_habbit),
+            FOREIGN KEY(id_user) REFERENCES user(id_user)
+        );"""
     
 
 

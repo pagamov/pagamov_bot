@@ -69,6 +69,9 @@ class Database:
         # Таблица напоминаний
         self.run_query(Text.firstInitDatabase_notify)
 
+        # Таблица с привычками пользователей
+        self.run_query(Text.firstInitDatabase_user_habbit)
+
         # Более крутые таблицы
         # Тут указываются какие роли для каких пользователей заведены
         self.run_query(Text.firstInitDatabase_user_role)
