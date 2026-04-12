@@ -1,0 +1,14 @@
+[
+    {
+        "id": "read_books",
+        "description": "Читать книги 30 минут",
+        "frequency_type": "ежедневно",
+        "time_of_day": "21:00"
+    },
+    {
+        "id": "meditation",
+        "description": "Медитация перед сном",
+        "frequency_type": "ежедневно",
+        "time_of_day": "22:00"
+    }
+]
