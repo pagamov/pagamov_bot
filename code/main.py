@@ -289,10 +289,47 @@ class Database:
                 FOREIGN KEY(subscription_id) REFERENCES program_subscriptions(id),
                 FOREIGN KEY(user_id) REFERENCES users(id)
             )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS badges (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                badge_id TEXT UNIQUE NOT NULL,
+                name TEXT NOT NULL,
+                description TEXT NOT NULL,
+                icon TEXT NOT NULL,
+                condition_type TEXT NOT NULL,
+                condition_value INTEGER DEFAULT 0
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS user_badges (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                badge_id TEXT NOT NULL,
+                earned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(user_id) REFERENCES users(id),
+                FOREIGN KEY(badge_id) REFERENCES badges(badge_id),
+                UNIQUE(user_id, badge_id)
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS user_stats (
+                user_id INTEGER PRIMARY KEY,
+                total_habits_created INTEGER DEFAULT 0,
+                total_completions INTEGER DEFAULT 0,
+                total_reminders_created INTEGER DEFAULT 0,
+                total_programs_subscribed INTEGER DEFAULT 0,
+                max_streak INTEGER DEFAULT 0,
+                current_streak INTEGER DEFAULT 0,
+                early_bird_count INTEGER DEFAULT 0,
+                night_owl_count INTEGER DEFAULT 0,
+                FOREIGN KEY(user_id) REFERENCES users(id)
+            )
             """
         ]
         for query in queries:
             self.execute_query(query)
+        self.initialize_badges()
 
 
 class UserService:
@@ -549,6 +586,146 @@ class ProgramProgressService:
         self.db.execute_query(query, (status, progress_id))
 
 
+class StatsService:
+    def __init__(self, database):
+        self.db = database
+    
+    def init_user_stats(self, user_id):
+        query = "INSERT OR IGNORE INTO user_stats (user_id) VALUES (?)"
+        self.db.execute_query(query, (user_id,))
+    
+    def get_user_stats(self, user_id):
+        query = "SELECT * FROM user_stats WHERE user_id = ?"
+        return self.db.fetch_one(query, (user_id,))
+    
+    def increment_stat(self, user_id, stat_name, value=1):
+        self.init_user_stats(user_id)
+        allowed_stats = [
+            'total_habits_created', 'total_completions', 'total_reminders_created',
+            'total_programs_subscribed', 'early_bird_count', 'night_owl_count'
+        ]
+        if stat_name not in allowed_stats:
+            return
+        query = f"UPDATE user_stats SET {stat_name} = {stat_name} + ? WHERE user_id = ?"
+        self.db.execute_query(query, (value, user_id))
+    
+    def update_streak(self, user_id, new_streak):
+        self.init_user_stats(user_id)
+        query = "UPDATE user_stats SET current_streak = ?, max_streak = MAX(max_streak, ?) WHERE user_id = ?"
+        self.db.execute_query(query, (new_streak, new_streak, user_id))
+    
+    def reset_streak(self, user_id):
+        self.init_user_stats(user_id)
+        query = "UPDATE user_stats SET current_streak = 0 WHERE user_id = ?"
+        self.db.execute_query(query, (user_id,))
+    
+    def check_and_update_streak(self, user_id, completion_date):
+        stats = self.get_user_stats(user_id)
+        if not stats:
+            self.init_user_stats(user_id)
+            return
+        current_date = datetime.strptime(completion_date, "%Y-%m-%d")
+        yesterday = (current_date - timedelta(days=1)).strftime("%Y-%m-%d")
+        query = """
+        SELECT COUNT(*) FROM habit_progress 
+        WHERE user_id = ? AND date = ? AND status = 'done'
+        """
+        yesterday_count = self.db.fetch_one(query, (user_id, yesterday))
+        if yesterday_count and yesterday_count[0] > 0:
+            new_streak = stats[6] + 1 if stats[6] else 1
+        else:
+            new_streak = 1
+        self.update_streak(user_id, new_streak)
+
+
+class BadgeService:
+    def __init__(self, database, stats_service):
+        self.db = database
+        self.stats_service = stats_service
+        self.badges = {
+            'first_habit': {'icon': '🌱', 'name': 'Первая привычка', 'description': 'Создайте свою первую привычку'},
+            'consistency_beginner': {'icon': '🔥', 'name': 'Стабильность', 'description': 'Достигните серии в 3 дня'},
+            'consistency_expert': {'icon': '💎', 'name': 'Мастер привычек', 'description': 'Достигните серии в 30 дней'},
+            'marathoner': {'icon': '🏃‍♂️', 'name': 'Марафонец', 'description': 'Выполните 100 привычек'},
+            'planner': {'icon': '📝', 'name': 'Планировщик', 'description': 'Создайте 5 напоминаний'},
+            'early_bird': {'icon': '🐦', 'name': 'Ранняя пташка', 'description': 'Выполните привычку до 8:00'},
+            'night_owl': {'icon': '🦉', 'name': 'Ночная сова', 'description': 'Выполните привычку после 23:00'},
+            'program_enjoyer': {'icon': '📁', 'name': 'Любитель программ', 'description': 'Подпишитесь на первую программу'},
+        }
+    
+    def initialize_badges(self):
+        for badge_id, badge in self.badges.items():
+            query = """
+            INSERT OR IGNORE INTO badges (badge_id, name, description, icon, condition_type, condition_value)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """
+            condition_map = {
+                'first_habit': ('total_habits_created', 1),
+                'consistency_beginner': ('max_streak', 3),
+                'consistency_expert': ('max_streak', 30),
+                'marathoner': ('total_completions', 100),
+                'planner': ('total_reminders_created', 5),
+                'early_bird': ('early_bird_count', 1),
+                'night_owl': ('night_owl_count', 1),
+                'program_enjoyer': ('total_programs_subscribed', 1),
+            }
+            condition_type, condition_value = condition_map.get(badge_id, ('', 0))
+            self.db.execute_query(query, (badge_id, badge['name'], badge['description'], badge['icon'], condition_type, condition_value))
+    
+    def get_user_badges(self, user_id):
+        query = """
+        SELECT b.badge_id, b.name, b.description, b.icon, ub.earned_at
+        FROM user_badges ub
+        JOIN badges b ON ub.badge_id = b.badge_id
+        WHERE ub.user_id = ?
+        ORDER BY ub.earned_at DESC
+        """
+        return self.db.fetch_all(query, (user_id,))
+    
+    def get_all_badges(self):
+        query = "SELECT badge_id, name, description, icon, condition_type, condition_value FROM badges"
+        return self.db.fetch_all(query)
+    
+    def award_badge(self, user_id, badge_id):
+        query = "INSERT OR IGNORE INTO user_badges (user_id, badge_id) VALUES (?, ?)"
+        self.db.execute_query(query, (user_id, badge_id))
+    
+    def check_and_award_badges(self, user_id):
+        stats = self.stats_service.get_user_stats(user_id)
+        if not stats:
+            return []
+        awarded = []
+        all_badges = self.get_all_badges()
+        user_badges = [b[0] for b in self.get_user_badges(user_id)]
+        stats_mapping = {
+            'total_habits_created': stats[1] if stats[1] else 0,
+            'total_completions': stats[2] if stats[2] else 0,
+            'total_reminders_created': stats[3] if stats[3] else 0,
+            'total_programs_subscribed': stats[4] if stats[4] else 0,
+            'max_streak': stats[5] if stats[5] else 0,
+            'current_streak': stats[6] if stats[6] else 0,
+            'early_bird_count': stats[7] if stats[7] else 0,
+            'night_owl_count': stats[8] if stats[8] else 0,
+        }
+        for badge in all_badges:
+            badge_id, name, description, icon, condition_type, condition_value = badge
+            if badge_id in user_badges:
+                continue
+            stat_value = stats_mapping.get(condition_type, 0)
+            if condition_type and stat_value >= condition_value:
+                self.award_badge(user_id, badge_id)
+                awarded.append({'icon': icon, 'name': name})
+        return awarded
+    
+    def check_early_bird_night_owl(self, user_id, completion_hour):
+        if completion_hour < 8:
+            self.stats_service.increment_stat(user_id, 'early_bird_count')
+            self.check_and_award_badges(user_id)
+        elif completion_hour >= 23:
+            self.stats_service.increment_stat(user_id, 'night_owl_count')
+            self.check_and_award_badges(user_id)
+
+
 db = Database()
 db.initialize_database()
 user_service = UserService(db)
@@ -557,6 +734,8 @@ habit_progress_service = HabitProgressService(db)
 notify_service = NotifyService(db)
 program_service = ProgramService(db)
 program_progress_service = ProgramProgressService(db)
+stats_service = StatsService(db)
+badge_service = BadgeService(db, stats_service)
 
 chat_ids = {}
 
@@ -658,7 +837,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_service.create_user(tg_username)
     bot_username = user_service.get_bot_username(tg_username)
     
-    chat_ids[db.fetch_one("SELECT id FROM users WHERE tg_username = ?", (tg_username,))[0]] = update.message.chat_id
+    user = db.fetch_one("SELECT id FROM users WHERE tg_username = ?", (tg_username,))
+    user_id = user[0]
+    chat_ids[user_id] = update.message.chat_id
+    stats_service.init_user_stats(user_id)
     
     await update.message.reply_text(
         f"Добро пожаловать в бот для отслеживания привычек!\n\nВаш ник: {bot_username}",
@@ -674,6 +856,7 @@ async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = user_service.get_user_by_tg_username(tg_username)
     if user:
         chat_ids[user[0]] = update.message.chat_id
+        stats_service.init_user_stats(user[0])
     
     if text == "Мои привычки":
         return await habit_menu(update, context)
@@ -779,6 +962,8 @@ async def add_habit_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 time_of_day=update.message.text,
                 start_date=datetime.now().strftime("%Y-%m-%d")
             )
+            stats_service.increment_stat(user[0], 'total_habits_created')
+            badge_service.check_and_award_badges(user[0])
             await update.message.reply_text(Text.HABIT_ADDED, reply_markup=Keyboard.get_habbit_menu())
         else:
             await update.message.reply_text(Text.USER_NOT_FOUND, reply_markup=Keyboard.get_habbit_menu())
@@ -943,6 +1128,8 @@ async def add_notify_time(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 description=context.user_data['notify_text'],
                 time_notify=full_datetime.strftime("%Y-%m-%d %H:%M:%S")
             )
+            stats_service.increment_stat(user[0], 'total_reminders_created')
+            badge_service.check_and_award_badges(user[0])
             await update.message.reply_text(Text.NOTIFY_ADDED, reply_markup=Keyboard.get_notify_menu())
         else:
             await update.message.reply_text(Text.USER_NOT_FOUND, reply_markup=Keyboard.get_notify_menu())
@@ -1068,6 +1255,8 @@ async def programm_select(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if user:
                 program_id = programs[num]["id"]
                 program_service.subscribe(user[0], program_id)
+                stats_service.increment_stat(user[0], 'total_programs_subscribed')
+                badge_service.check_and_award_badges(user[0])
                 await update.message.reply_text(Text.PROGRAM_ADDED, reply_markup=Keyboard.get_programm_menu())
             else:
                 await update.message.reply_text(Text.USER_NOT_FOUND, reply_markup=Keyboard.get_programm_menu())
@@ -1132,9 +1321,16 @@ async def about_me_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return State.ABOUT_ME_MENU
     
     elif text == "Мои достижения":
+        tg_username = update.effective_user.username
+        user = user_service.get_user_by_tg_username(tg_username)
+        if user:
+            message = get_badges_display(user[0])
+        else:
+            message = Text.USER_NOT_FOUND
         await update.message.reply_text(
-            Text.BADGES_COMING,
-            reply_markup=Keyboard.get_badges_menu()
+            message,
+            reply_markup=Keyboard.get_badges_menu(),
+            parse_mode='Markdown'
         )
         return State.BADGES
     
@@ -1154,11 +1350,67 @@ async def badges_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return State.BADGES
 
 
+def get_badges_display(user_id):
+    stats = stats_service.get_user_stats(user_id)
+    user_badges = badge_service.get_user_badges(user_id)
+    all_badges = badge_service.get_all_badges()
+    
+    stats_labels = {
+        'total_habits_created': 'Привычек создано',
+        'total_completions': 'Всего выполнено',
+        'total_reminders_created': 'Напоминаний создано',
+        'total_programs_subscribed': 'Программ',
+        'max_streak': 'Макс. серия дней',
+        'current_streak': 'Текущая серия',
+        'early_bird_count': 'Ранних пташек',
+        'night_owl_count': 'Ночных сов',
+    }
+    
+    message = "📊 *Ваша статистика:*\n\n"
+    if stats:
+        stat_values = [
+            stats[1] if stats[1] else 0,
+            stats[2] if stats[2] else 0,
+            stats[3] if stats[3] else 0,
+            stats[4] if stats[4] else 0,
+            stats[5] if stats[5] else 0,
+            stats[6] if stats[6] else 0,
+            stats[7] if stats[7] else 0,
+            stats[8] if stats[8] else 0,
+        ]
+        for i, (key, label) in enumerate(stats_labels.items()):
+            message += f"{label}: *{stat_values[i]}*\n"
+    else:
+        message += "_Нет данных_\n"
+    
+    earned_badge_ids = [b[0] for b in user_badges]
+    message += "\n🏅 *Ваши бейджи:*\n"
+    if user_badges:
+        for badge in user_badges:
+            badge_id, name, description, icon, earned_at = badge
+            message += f"{icon} *{name}* — {description}\n"
+    else:
+        message += "_У вас пока нет бейджей_\n"
+    
+    message += "\n🔒 *Закрытые бейджи:*\n"
+    locked_count = 0
+    for badge in all_badges:
+        badge_id, name, description, icon, condition_type, condition_value = badge
+        if badge_id not in earned_badge_ids:
+            message += f"{icon} *{name}* — {description}\n"
+            locked_count += 1
+    if locked_count == 0:
+        message += "_Все бейджи получены!_\n"
+    
+    return message
+
+
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     
     data = query.data
+    current_hour = datetime.now().hour
     
     if data.startswith("done_notify_"):
         notify_id = int(data.split("_")[2])
@@ -1177,6 +1429,15 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         progress = habit_progress_service.get_today_progress(habit_id, current_date)
         if progress:
             habit_progress_service.update_progress(progress[0], "done")
+            user_id = progress[2]
+            stats_service.increment_stat(user_id, 'total_completions')
+            stats_service.check_and_update_streak(user_id, current_date)
+            badge_service.check_early_bird_night_owl(user_id, current_hour)
+            new_badges = badge_service.check_and_award_badges(user_id)
+            if new_badges:
+                badge_msg = "\n\n🎉 Получены новые бейджи:\n" + "\n".join([f"{b['icon']} {b['name']}" for b in new_badges])
+                await query.edit_message_text(text=f"{query.message.text}\n\n✅ Выполнено!{badge_msg}")
+                return
         await query.edit_message_text(text=f"{query.message.text}\n\n✅ Выполнено!")
     
     elif data.startswith("postpone15m_habit_"):
@@ -1201,6 +1462,15 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         progress = program_progress_service.get_today_progress(sub_id, current_date)
         if progress:
             program_progress_service.update_progress(progress[0], "done")
+            user_id = progress[2]
+            stats_service.increment_stat(user_id, 'total_completions')
+            stats_service.check_and_update_streak(user_id, current_date)
+            badge_service.check_early_bird_night_owl(user_id, current_hour)
+            new_badges = badge_service.check_and_award_badges(user_id)
+            if new_badges:
+                badge_msg = "\n\n🎉 Получены новые бейджи:\n" + "\n".join([f"{b['icon']} {b['name']}" for b in new_badges])
+                await query.edit_message_text(text=f"{query.message.text}\n\n✅ Выполнено!{badge_msg}")
+                return
         await query.edit_message_text(text=f"{query.message.text}\n\n✅ Выполнено!")
     
     elif data.startswith("postpone15m_prog_"):
