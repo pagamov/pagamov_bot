@@ -1,0 +1,74 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/28.2.8 Chrome/140.0.7339.240 Electron/38.4.0 Safari/537.36" version="28.2.8">
+  <diagram name="Страница — 1" id="D6Bvrna9xRPrK09cZGCv">
+    <mxGraphModel dx="812" dy="546" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="vwqU8jwjwi5Rq4Aq9Ycy-9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.25;exitDx=0;exitDy=0;entryX=0;entryY=0.25;entryDx=0;entryDy=0;fontFamily=Times New Roman;fontSize=14;labelBackgroundColor=default;fontColor=#000000;" edge="1" parent="1" source="vwqU8jwjwi5Rq4Aq9Ycy-1" target="vwqU8jwjwi5Rq4Aq9Ycy-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="vwqU8jwjwi5Rq4Aq9Ycy-1" value="&lt;div style=&quot;line-height: 27px; white-space: pre;&quot;&gt;&lt;span&gt;Telegram Bot&lt;/span&gt;&lt;/div&gt;&lt;div style=&quot;line-height: 27px; white-space: pre;&quot;&gt;&lt;div style=&quot;line-height: 27px;&quot;&gt;(Python)&lt;/div&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Times New Roman;fontColor=#000000;fontSize=14;labelBackgroundColor=default;" vertex="1" parent="1">
+          <mxGeometry x="40" y="60" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="vwqU8jwjwi5Rq4Aq9Ycy-10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.75;exitDx=0;exitDy=0;entryX=1;entryY=0.75;entryDx=0;entryDy=0;fontFamily=Times New Roman;fontSize=14;labelBackgroundColor=default;fontColor=#000000;" edge="1" parent="1" source="vwqU8jwjwi5Rq4Aq9Ycy-2" target="vwqU8jwjwi5Rq4Aq9Ycy-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="vwqU8jwjwi5Rq4Aq9Ycy-2" value="&lt;div style=&quot;line-height: 27px; white-space: pre;&quot;&gt;&lt;div style=&quot;line-height: 27px;&quot;&gt;NLP Service&lt;/div&gt;&lt;div style=&quot;line-height: 27px;&quot;&gt;(FastAPI)&lt;/div&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Times New Roman;fontColor=#000000;fontSize=14;labelBackgroundColor=default;" vertex="1" parent="1">
+          <mxGeometry x="320" y="60" width="150" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="vwqU8jwjwi5Rq4Aq9Ycy-8" value="" style="group;fontFamily=Times New Roman;fontSize=14;labelBackgroundColor=default;fontColor=#000000;" vertex="1" connectable="0" parent="1">
+          <mxGeometry x="40" y="270" width="430" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="vwqU8jwjwi5Rq4Aq9Ycy-3" value="&lt;div style=&quot;line-height: 27px; white-space: pre;&quot;&gt;&lt;div style=&quot;line-height: 27px;&quot;&gt;База данных PostgreSQL&lt;/div&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Times New Roman;fontColor=#000000;verticalAlign=top;fontSize=14;labelBackgroundColor=default;" vertex="1" parent="vwqU8jwjwi5Rq4Aq9Ycy-8">
+          <mxGeometry width="430" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="vwqU8jwjwi5Rq4Aq9Ycy-4" value="Чаты (подразделения)" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Times New Roman;fontSize=14;fontColor=#000000;labelBackgroundColor=default;" vertex="1" parent="vwqU8jwjwi5Rq4Aq9Ycy-8">
+          <mxGeometry x="15" y="40" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="vwqU8jwjwi5Rq4Aq9Ycy-5" value="&lt;div style=&quot;line-height: 27px; white-space: pre;&quot;&gt;Метрики &lt;/div&gt;&lt;div style=&quot;line-height: 27px; white-space: pre;&quot;&gt;анализа текста&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Times New Roman;fontSize=14;fontColor=#000000;labelBackgroundColor=default;" vertex="1" parent="vwqU8jwjwi5Rq4Aq9Ycy-8">
+          <mxGeometry x="150" y="40" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="vwqU8jwjwi5Rq4Aq9Ycy-6" value="&lt;div style=&quot;line-height: 27px; white-space: pre;&quot;&gt;Согласие на &lt;/div&gt;&lt;div style=&quot;line-height: 27px; white-space: pre;&quot;&gt;обработку данных&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fontFamily=Times New Roman;fontSize=14;fontColor=#000000;labelBackgroundColor=default;" vertex="1" parent="vwqU8jwjwi5Rq4Aq9Ycy-8">
+          <mxGeometry x="290" y="40" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="vwqU8jwjwi5Rq4Aq9Ycy-12" value="HTTP" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontFamily=Times New Roman;fontSize=14;labelBackgroundColor=default;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="225" y="40" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="vwqU8jwjwi5Rq4Aq9Ycy-14" value="" style="edgeStyle=none;orthogonalLoop=1;jettySize=auto;html=1;rounded=0;fontFamily=Times New Roman;fontSize=14;labelBackgroundColor=default;fontColor=#000000;" edge="1" parent="1">
+          <mxGeometry width="100" relative="1" as="geometry">
+            <mxPoint x="120" y="240" as="sourcePoint" />
+            <mxPoint x="400" y="240" as="targetPoint" />
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="vwqU8jwjwi5Rq4Aq9Ycy-16" value="" style="edgeStyle=none;orthogonalLoop=1;jettySize=auto;html=1;rounded=0;fontFamily=Times New Roman;fontSize=14;labelBackgroundColor=default;fontColor=#000000;" edge="1" parent="1">
+          <mxGeometry width="100" relative="1" as="geometry">
+            <mxPoint x="120" y="180" as="sourcePoint" />
+            <mxPoint x="400" y="180" as="targetPoint" />
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="vwqU8jwjwi5Rq4Aq9Ycy-17" value="" style="edgeStyle=none;orthogonalLoop=1;jettySize=auto;html=1;rounded=0;exitX=0.545;exitY=1.028;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.19;entryY=-0.001;entryDx=0;entryDy=0;entryPerimeter=0;fontFamily=Times New Roman;fontSize=14;labelBackgroundColor=default;fontColor=#000000;" edge="1" parent="1" source="vwqU8jwjwi5Rq4Aq9Ycy-1" target="vwqU8jwjwi5Rq4Aq9Ycy-3">
+          <mxGeometry width="100" relative="1" as="geometry">
+            <mxPoint x="120" y="140" as="sourcePoint" />
+            <mxPoint x="220" y="140" as="targetPoint" />
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="vwqU8jwjwi5Rq4Aq9Ycy-18" value="" style="edgeStyle=none;orthogonalLoop=1;jettySize=auto;html=1;rounded=0;exitX=0.541;exitY=1.037;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.837;entryY=-0.001;entryDx=0;entryDy=0;entryPerimeter=0;fontFamily=Times New Roman;fontSize=14;labelBackgroundColor=default;fontColor=#000000;" edge="1" parent="1" source="vwqU8jwjwi5Rq4Aq9Ycy-2" target="vwqU8jwjwi5Rq4Aq9Ycy-3">
+          <mxGeometry width="100" relative="1" as="geometry">
+            <mxPoint x="180" y="150" as="sourcePoint" />
+            <mxPoint x="280" y="150" as="targetPoint" />
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="vwqU8jwjwi5Rq4Aq9Ycy-19" value="&lt;div style=&quot;line-height: 27px; white-space: pre;&quot;&gt;POST&lt;/div&gt;&lt;div style=&quot;line-height: 27px; white-space: pre;&quot;&gt;/api/v1/assess/burnout&lt;/div&gt;" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;fontFamily=Times New Roman;fontSize=14;labelBackgroundColor=default;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="140" y="190" width="200" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="vwqU8jwjwi5Rq4Aq9Ycy-20" value="&lt;div style=&quot;line-height: 27px; white-space: pre;&quot;&gt;POST&lt;/div&gt;&lt;div style=&quot;line-height: 27px; white-space: pre;&quot;&gt;&lt;div style=&quot;line-height: 27px;&quot;&gt;/api/v1/analyze/sentiment&lt;/div&gt;&lt;/div&gt;" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;rounded=0;fontFamily=Times New Roman;fontSize=14;labelBackgroundColor=default;fontColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="140" y="130" width="180" height="40" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
