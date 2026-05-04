@@ -329,7 +329,7 @@ class Database:
         ]
         for query in queries:
             self.execute_query(query)
-        self.initialize_badges()
+        # self.initialize_badges()
 
 
 class UserService:
@@ -1491,6 +1491,9 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def main():
+
+
+
     app = Application.builder().token(TOKEN).build()
     job_queue = app.job_queue
     
