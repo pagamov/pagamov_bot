@@ -1,0 +1,21 @@
+# Telegram Bot
+telegram-bot/requirements.txt
+telegram-bot/Dockerfile
+telegram-bot/.env.example
+
+# NLP Service
+nlp-service/requirements.txt
+nlp-service/Dockerfile
+
+# PostgreSQL
+postgres/init/01_init_schema.sql
+
+# Scripts
+scripts/wait_for_services.sh
+
+# Environment
+.env
+.env.example
+
+# Documentation
+README.md
